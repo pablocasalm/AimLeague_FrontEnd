@@ -13,16 +13,17 @@ import {
   MessageSquare,
   Gamepad2
 } from 'lucide-react';
+import { userService } from '../../services/userService';
 
 interface FormData {
-  nombre: string;
-  apellido: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-  apodo: string;
-  discord: string;
-  steamId: string;
+  Username: string,
+  Password: string,
+  RepeatPassword: string,
+  Email: string,
+  FirstName: string,
+  LastName: string,
+  DiscordUser: string,
+  SteamId: string
 }
 
 interface FormErrors {
@@ -32,14 +33,14 @@ interface FormErrors {
 const RegisterPage = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<FormData>({
-    nombre: '',
-    apellido: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    apodo: '',
-    discord: '',
-    steamId: ''
+    Username: '',
+    Password: '',
+    RepeatPassword: '',
+    Email: '',
+    FirstName: '',
+    LastName: '',
+    DiscordUser: '',
+    SteamId: ''
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
@@ -60,14 +61,14 @@ const RegisterPage = () => {
     }
 
     // Update password strength in real-time
-    if (field === 'password') {
+    if (field === 'Password') {
       setPasswordStrength(calculatePasswordStrength(value));
     }
 
     // Real-time password confirmation validation
-    if (field === 'confirmPassword' || (field === 'password' && formData.confirmPassword)) {
-      const passwordToCheck = field === 'password' ? value : formData.password;
-      const confirmPasswordToCheck = field === 'confirmPassword' ? value : formData.confirmPassword;
+    if (field === 'RepeatPassword' || (field === 'Password' && formData.RepeatPassword)) {
+      const passwordToCheck = field === 'Password' ? value : formData.Password;
+      const confirmPasswordToCheck = field === 'RepeatPassword' ? value : formData.RepeatPassword;
       
       if (confirmPasswordToCheck && passwordToCheck !== confirmPasswordToCheck) {
         setErrors(prev => ({ ...prev, confirmPassword: 'Las contraseñas no coinciden' }));
@@ -142,51 +143,51 @@ const RegisterPage = () => {
     const newErrors: FormErrors = {};
 
     // Required fields validation
-    if (!formData.nombre.trim()) {
+    if (!formData.FirstName.trim()) {
       newErrors.nombre = 'El nombre es obligatorio';
     }
 
-    if (!formData.apellido.trim()) {
+    if (!formData.LastName.trim()) {
       newErrors.apellido = 'El apellido es obligatorio';
     }
 
-    if (!formData.email.trim()) {
+    if (!formData.Email.trim()) {
       newErrors.email = 'El correo electrónico es obligatorio';
-    } else if (!validateEmail(formData.email)) {
+    } else if (!validateEmail(formData.Email)) {
       newErrors.email = 'Ingresa un correo electrónico válido';
     }
 
-    if (!formData.password) {
+    if (!formData.Password) {
       newErrors.password = 'La contraseña es obligatoria';
-    } else if (formData.password.length < 8) {
+    } else if (formData.Password.length < 8) {
       newErrors.password = 'La contraseña debe tener al menos 8 caracteres';
     } else if (passwordStrength < 3) {
       newErrors.password = 'La contraseña debe ser más fuerte';
     }
 
-    if (!formData.confirmPassword) {
+    if (!formData.RepeatPassword) {
       newErrors.confirmPassword = 'Confirma tu contraseña';
-    } else if (formData.password !== formData.confirmPassword) {
+    } else if (formData.Password !== formData.RepeatPassword) {
       newErrors.confirmPassword = 'Las contraseñas no coinciden';
     }
 
-    if (!formData.apodo.trim()) {
+    if (!formData.LastName.trim()) {
       newErrors.apodo = 'El apodo es obligatorio';
-    } else if (formData.apodo.length < 3) {
+    } else if (formData.LastName.length < 3) {
       newErrors.apodo = 'El apodo debe tener al menos 3 caracteres';
-    } else if (formData.apodo.length > 20) {
+    } else if (formData.LastName.length > 20) {
       newErrors.apodo = 'El apodo no puede tener más de 20 caracteres';
     }
 
-    if (!formData.discord.trim()) {
+    if (!formData.DiscordUser.trim()) {
       newErrors.discord = 'El usuario de Discord es obligatorio';
-    } else if (!formData.discord.includes('#') && !formData.discord.includes('@')) {
+    } else if (!formData.DiscordUser.includes('#') && !formData.DiscordUser.includes('@')) {
       newErrors.discord = 'Formato inválido. Usa: usuario#1234 o @usuario';
     }
 
-    if (!formData.steamId.trim()) {
+    if (!formData.SteamId.trim()) {
       newErrors.steamId = 'El STEAM_ID es obligatorio';
-    } else if (!validateSteamId(formData.steamId)) {
+    } else if (!validateSteamId(formData.SteamId)) {
       newErrors.steamId = 'STEAM_ID inválido. Debe ser un Steam64 ID válido';
     }
 
@@ -196,41 +197,46 @@ const RegisterPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
+  
+  if (!validateForm()) {
+    return;
+  }
 
-    setIsLoading(true);
+  setIsLoading(true);
+  setErrors({});
 
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Store user data temporarily (mock backend)
-      const userData = {
-        id: Date.now(),
-        ...formData,
-        createdAt: new Date().toISOString(),
-        role: 'Usuario'
-      };
-      
-      console.log('User registered:', userData);
-      
-      // Redirect to login with success message
-      navigate('/login', { 
-        state: { 
+  try {
+    // 1) Llamas al servicio real
+    const result = await userService.register({
+      Username:    formData.Username,
+      Password:    formData.Password,
+      RepeatPassword: formData.RepeatPassword,  // si tu API lo pide
+      Email:       formData.Email,
+      FirstName:   formData.FirstName,
+      LastName:    formData.LastName,
+      DiscordUser: formData.DiscordUser,
+      SteamId:     formData.SteamId
+    });
+
+    // 2) Manejas la respuesta (ej. un objeto { Success, Error } ó { Success, Token, ... })
+    if (!result.Success) {
+      // mostramos el error que venga del backend
+      setErrors({ general: result.Error || 'Error al registrar usuario' });
+    } else {
+      // redirigimos al login con mensaje de éxito
+      navigate('/login', {
+        state: {
           message: '¡Registro exitoso! Ya puedes iniciar sesión con tus credenciales.',
           type: 'success'
         }
       });
-      
-    } catch (error) {
-      console.error('Registration error:', error);
-      setErrors({ general: 'Error al registrar usuario. Por favor, inténtalo de nuevo.' });
-    } finally {
-      setIsLoading(false);
     }
+  } catch (err: any) {
+    // capturamos fallo de red o parsing
+    setErrors({ general: err.message || 'Error desconocido al registrar' });
+  } finally {
+    setIsLoading(false);
+  }
   };
 
   return (
@@ -277,8 +283,8 @@ const RegisterPage = () => {
                   <User className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3" />
                   <input
                     type="text"
-                    value={formData.nombre}
-                    onChange={(e) => handleInputChange('nombre', e.target.value)}
+                    value={formData.FirstName}
+                    onChange={(e) => handleInputChange('FirstName', e.target.value)}
                     className={`w-full bg-gray-900 border rounded-lg pl-7 pr-2 py-1.5 text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-transparent transition-all duration-300 text-xs ${
                       errors.nombre ? 'border-red-500' : 'border-gray-600'
                     }`}
@@ -299,8 +305,8 @@ const RegisterPage = () => {
                   <User className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3" />
                   <input
                     type="text"
-                    value={formData.apellido}
-                    onChange={(e) => handleInputChange('apellido', e.target.value)}
+                    value={formData.LastName}
+                    onChange={(e) => handleInputChange('LastName', e.target.value)}
                     className={`w-full bg-gray-900 border rounded-lg pl-7 pr-2 py-1.5 text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-transparent transition-all duration-300 text-xs ${
                       errors.apellido ? 'border-red-500' : 'border-gray-600'
                     }`}
@@ -321,8 +327,8 @@ const RegisterPage = () => {
                   <Mail className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3" />
                   <input
                     type="email"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    value={formData.Email}
+                    onChange={(e) => handleInputChange('Email', e.target.value)}
                     className={`w-full bg-gray-900 border rounded-lg pl-7 pr-2 py-1.5 text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-transparent transition-all duration-300 text-xs ${
                       errors.email ? 'border-red-500' : 'border-gray-600'
                     }`}
@@ -346,8 +352,8 @@ const RegisterPage = () => {
                   <Lock className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3" />
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    value={formData.password}
-                    onChange={(e) => handleInputChange('password', e.target.value)}
+                    value={formData.Password}
+                    onChange={(e) => handleInputChange('Password', e.target.value)}
                     className={`w-full bg-gray-900 border rounded-lg pl-7 pr-8 py-1.5 text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-transparent transition-all duration-300 text-xs ${
                       errors.password ? 'border-red-500' : 'border-gray-600'
                     }`}
@@ -363,7 +369,7 @@ const RegisterPage = () => {
                 </div>
                 
                 {/* Password Strength Indicator */}
-                {formData.password && (
+                {formData.Password && (
                   <div className="mt-1">
                     <div className="flex items-center justify-between mb-0.5">
                       <span className="text-xs text-gray-400">Fortaleza:</span>
@@ -394,8 +400,8 @@ const RegisterPage = () => {
                   <Lock className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3" />
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
-                    value={formData.confirmPassword}
-                    onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                    value={formData.RepeatPassword}
+                    onChange={(e) => handleInputChange('RepeatPassword', e.target.value)}
                     className={`w-full bg-gray-900 border rounded-lg pl-7 pr-8 py-1.5 text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-transparent transition-all duration-300 text-xs ${
                       errors.confirmPassword ? 'border-red-500' : 'border-gray-600'
                     }`}
@@ -432,8 +438,8 @@ const RegisterPage = () => {
                     <User className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3" />
                     <input
                       type="text"
-                      value={formData.apodo}
-                      onChange={(e) => handleInputChange('apodo', e.target.value)}
+                      value={formData.Username}
+                      onChange={(e) => handleInputChange('Username', e.target.value)}
                       className={`w-full bg-gray-900 border rounded-lg pl-7 pr-2 py-1.5 text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-transparent transition-all duration-300 text-xs ${
                         errors.apodo ? 'border-red-500' : 'border-gray-600'
                       }`}
@@ -447,7 +453,7 @@ const RegisterPage = () => {
                     ) : (
                       <p className="text-gray-500 text-xs">3-20 caracteres</p>
                     )}
-                    <span className="text-gray-500 text-xs">{formData.apodo.length}/20</span>
+                    <span className="text-gray-500 text-xs">{formData.Username.length}/20</span>
                   </div>
                 </div>
 
@@ -460,8 +466,8 @@ const RegisterPage = () => {
                     <MessageSquare className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3" />
                     <input
                       type="text"
-                      value={formData.discord}
-                      onChange={(e) => handleInputChange('discord', e.target.value)}
+                      value={formData.DiscordUser}
+                      onChange={(e) => handleInputChange('DiscordUser', e.target.value)}
                       className={`w-full bg-gray-900 border rounded-lg pl-7 pr-2 py-1.5 text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-transparent transition-all duration-300 text-xs ${
                         errors.discord ? 'border-red-500' : 'border-gray-600'
                       }`}
@@ -482,8 +488,8 @@ const RegisterPage = () => {
                     <Gamepad2 className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3" />
                     <input
                       type="text"
-                      value={formData.steamId}
-                      onChange={(e) => handleInputChange('steamId', e.target.value)}
+                      value={formData.SteamId}
+                      onChange={(e) => handleInputChange('SteamId', e.target.value)}
                       className={`w-full bg-gray-900 border rounded-lg pl-7 pr-2 py-1.5 text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-transparent transition-all duration-300 text-xs ${
                         errors.steamId ? 'border-red-500' : 'border-gray-600'
                       }`}

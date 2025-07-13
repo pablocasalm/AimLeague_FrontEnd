@@ -19,6 +19,8 @@ import {
   GraduationCap
 } from 'lucide-react';
 import DashboardHeader from '../components/DashboardHeader';
+import {teamService} from '../../services/teamService';
+import { setNumber } from '../utils/storageNumber';
 
 interface TeamMember {
   nombre: string;
@@ -33,6 +35,18 @@ interface Team {
   soyCapitan: boolean;
   soyCoach: boolean;
   tieneManagement: boolean;
+}
+
+interface CreateTeam {
+  TeamName: string;
+  TeamRole: Number;
+  ImageUrl?: string;
+}
+
+interface CreateTeamResult {
+  TeamId: number,
+  Message: string,
+  Success: boolean,
 }
 
 const TeamPage = () => {
@@ -198,36 +212,52 @@ const TeamPage = () => {
   const [hasTeam, setHasTeam] = useState(initialHasTeam);
   const [teamData, setTeamData] = useState<Team | null>(initialTeamData);
   const [isCreatingTeam, setIsCreatingTeam] = useState(false);
-  const [newTeamName, setNewTeamName] = useState('');
-  const [teamLogo, setTeamLogo] = useState('');
+  const [Error, setError] = useState<string | null>(null);
+  const [IsLoading, setIsLoading] = useState(false);
+  const [CreateTeamData, setCreateTeamData] = useState<CreateTeam>({
+    TeamName: '',
+    TeamRole: userRole == 'coach' ? 2 : 1,
+    ImageUrl: '',
+  });
 
   const handleCreateTeam = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!newTeamName.trim()) {
+    setError(null);
+  
+    const name = CreateTeamData.TeamName.trim();
+    if (!name) {
+      setError('El nombre del equipo no puede estar vacío');
       return;
     }
+    setIsLoading(true);
+    try{
+        const result = await teamService.createTeam({
+          TeamName: CreateTeamData.TeamName,
+          TeamRole: CreateTeamData.TeamRole,
+        }) as CreateTeamResult;
 
-    // Create new team with user as captain
-    const newTeam: Team = {
-      nombre: newTeamName,
-      logo: teamLogo || "https://images.pexels.com/photos/1040945/pexels-photo-1040945.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop",
-      miembros: [
-        { nombre: username, rol: "Capitán", discord: `@${username}` }
-      ],
-      soyCapitan: true,
-      soyCoach: false,
-      tieneManagement: true
-    };
-
-    setTeamData(newTeam);
-    setHasTeam(true);
-    setIsCreatingTeam(false);
-    setNewTeamName('');
-    setTeamLogo('');
+        if (!result.Success) {
+          setError(result.Message || 'Error al crear el equipo');
+        } else {
+          setNumber('teamid', result.TeamId);
+          setHasTeam(true);
+          setIsCreatingTeam(false);
+        }
+    } catch (err: any) {
+      console.error('CreateTeam error:', err);
+      setError(err.message || 'Error de red al crear el equipo');
+    } finally {
+      setIsLoading(false);
+    }
     
-    console.log('Creating team:', newTeamName);
   };
+
+  const handleInputChange = (field: keyof CreateTeam, value: string) => {
+    setCreateTeamData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  }
 
   const handleInvitePlayer = () => {
     alert('Funcionalidad de invitar jugador - próximamente');
@@ -357,8 +387,8 @@ const TeamPage = () => {
                   </label>
                   <input
                     type="text"
-                    value={newTeamName}
-                    onChange={(e) => setNewTeamName(e.target.value)}
+                    value={CreateTeamData.TeamName}
+                    onChange={(e) => handleInputChange('TeamName', e.target.value)}
                     className="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors duration-300"
                     placeholder="Ej: Fire Dragons"
                     required
@@ -372,8 +402,8 @@ const TeamPage = () => {
                   <div className="flex items-center space-x-4">
                     <input
                       type="text"
-                      value={teamLogo}
-                      onChange={(e) => setTeamLogo(e.target.value)}
+                      value={CreateTeamData.ImageUrl}
+                      onChange={(e) => handleInputChange('ImageUrl', e.target.value)}
                       className="flex-1 bg-gray-900 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors duration-300"
                       placeholder="URL de la imagen del logo"
                     />
@@ -414,7 +444,7 @@ const TeamPage = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setIsCreatingTeam(false)}
+                    onClick={handleCreateTeam}
                     className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-300"
                   >
                     Cancelar

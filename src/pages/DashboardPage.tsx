@@ -17,11 +17,12 @@ import {
   Plus
 } from 'lucide-react';
 import DashboardHeader from '../components/DashboardHeader';
+import { getNumber } from '../utils/storageNumber';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
   const username = localStorage.getItem('username') || 'user1';
-  const userRole = localStorage.getItem('userRole') || 'Usuario';
+  const userRole = localStorage.getItem('role') || 'Usuario';
 
   useEffect(() => {
     // Check if user is logged in
@@ -46,6 +47,7 @@ const DashboardPage = () => {
         return 'Acceso básico a la plataforma.';
     }
   };
+
 
   // Mock recent activity data
   const recentActivity = [
@@ -217,28 +219,28 @@ const DashboardPage = () => {
                   <div className="bg-cyan-500/20 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
                     <Trophy className="w-6 h-6 text-cyan-400" />
                   </div>
-                  <div className="text-3xl font-bold text-cyan-400 mb-2">0</div>
+                  <div className="text-3xl font-bold text-cyan-400 mb-2">{getNumber('tournamentsplayed')}</div>
                   <div className="text-gray-300 font-semibold">Torneos Jugados</div>
                 </div>
                 <div className="bg-gray-900 border border-gray-600 rounded-lg p-6 text-center hover:border-cyan-500/50 transition-colors duration-300">
                   <div className="bg-cyan-500/20 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
                     <Award className="w-6 h-6 text-cyan-400" />
                   </div>
-                  <div className="text-3xl font-bold text-cyan-400 mb-2">0</div>
+                  <div className="text-3xl font-bold text-cyan-400 mb-2">{getNumber('wins')}</div>
                   <div className="text-gray-300 font-semibold">Victorias</div>
                 </div>
                 <div className="bg-gray-900 border border-gray-600 rounded-lg p-6 text-center hover:border-cyan-500/50 transition-colors duration-300">
                   <div className="bg-cyan-500/20 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
                     <Target className="w-6 h-6 text-cyan-400" />
                   </div>
-                  <div className="text-3xl font-bold text-cyan-400 mb-2">0</div>
+                  <div className="text-3xl font-bold text-cyan-400 mb-2">{getNumber('points')}</div>
                   <div className="text-gray-300 font-semibold">Puntos</div>
                 </div>
                 <div className="bg-gray-900 border border-gray-600 rounded-lg p-6 text-center hover:border-cyan-500/50 transition-colors duration-300">
                   <div className="bg-cyan-500/20 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
                     <TrendingUp className="w-6 h-6 text-cyan-400" />
                   </div>
-                  <div className="text-3xl font-bold text-cyan-400 mb-2">-</div>
+                  <div className="text-3xl font-bold text-cyan-400 mb-2">{getNumber('ranking') == 0 ? "-" : getNumber('ranking')}</div>
                   <div className="text-gray-300 font-semibold">Ranking</div>
                 </div>
               </div>
