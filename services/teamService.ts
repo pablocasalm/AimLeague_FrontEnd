@@ -12,7 +12,7 @@ export const teamService = {
         body: JSON.stringify(teamData),
     }),
 
-    joinTeam: (joinTeamData: any) => apiClient('Team/JoinTeam', {
+    invitePlayer: (joinTeamData: any) => apiClient('Team/InvitePlayer', {
         method: 'POST',
         body: JSON.stringify(joinTeamData),
     }),
@@ -25,5 +25,33 @@ export const teamService = {
         body: JSON.stringify(removeMemberData),
     }), 
 
+    getNotifications: (): Promise<{
+        id: number;
+        title: string;
+        description: string;
+        readed: boolean;        //Probablemente failed to fetch
+        type: string;
+        relatedEntityId: number;
+        createdAt: string;
+      }[]> =>
+        apiClient('/Notifications', { method: 'GET' }),
+    
+      markRead: (notificationId: number) =>
+        apiClient('/Notifications/MarkRead', {
+          method: 'POST',
+          body: JSON.stringify(notificationId)
+        }),
+    
+      acceptInvitation: (notificationId: number) =>
+        apiClient('/Notifications/AcceptInvitation', {
+          method: 'POST',
+          body: JSON.stringify(notificationId)
+        }),
+    
+      rejectInvitation: (notificationId: number) =>
+        apiClient('/Notifications/RejectInvitation', {
+          method: 'POST',
+          body: JSON.stringify(notificationId)
+        }),
     
 }

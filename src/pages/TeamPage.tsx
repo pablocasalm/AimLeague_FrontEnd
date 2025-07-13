@@ -23,6 +23,8 @@ import {teamService} from '../../services/teamService';
 import { getNumber, setNumber } from '../utils/storageNumber';
 import { UserRole } from '../utils/roleMapping';
 import { mapRole} from '../utils/teamRoleMapping';
+import InvitePlayerModal from '../modals/InvitePlayerModal';
+import { User } from '../../services/userService';
 
 
 interface Team {
@@ -67,6 +69,8 @@ const TeamPage = () => {
   const username = localStorage.getItem('username') || 'user1';
   const userRole = localStorage.getItem('userRole') || 'Usuario';
   const userTeamRole = localStorage.getItem('userTeamRole') || 'Jugador';
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string|null>(null);
 
   // Check if user should have access to this page
   const hasTeamAccess = userRole === 'Jugador' || userRole === 'Usuario' || userRole === 'Coach';
@@ -85,7 +89,7 @@ const TeamPage = () => {
       return;
     }
 
-    const load = async () => {
+    /*const load = async () => {
       try {
         
           const data = await teamService.getTeamInfo(getNumber('teamid'));
@@ -101,9 +105,9 @@ const TeamPage = () => {
         setIsLoading(false);
       }
 
-    };
-
-    load();
+    };*/
+    loadTeamInfo();
+    //load();
   }, [navigate, hasTeamAccess]);
 
   const mapMemberRoleToTeamRole = (TeamMembers: TeamMember[], MembersRole: MembersRole[]): void => {
@@ -319,6 +323,28 @@ const TeamPage = () => {
     alert('Funcionalidad de invitar jugador - próximamente');
   };
 
+  const loadTeamInfo = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await teamService.getTeamInfo(getNumber('teamid'));
+      setTeamData(data);
+      mapMemberRoleToTeamRole(data.members, data.membersRole);
+      setHasTeam(true);
+    } catch (e: any) {
+      console.error('Error loading team data:', e);
+      setError('Error al cargar los datos del equipo');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleInviteSuccess = (user: User) => {
+    loadTeamInfo();
+    setSuccessMessage(`Has invitado a ${user.username} correctamente.`);
+    setTimeout(() => setSuccessMessage(null), 3500);
+  };
+
   const handleRemovePlayer = async (memberId: number) => {
     if (!teamData) return;
     setIsLoading(true);
@@ -394,6 +420,14 @@ const TeamPage = () => {
   return (
     <div className="min-h-screen bg-gray-900">
       <DashboardHeader />
+
+        {/* Banner de éxito */}
+        {successMessage && (
+          <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-lg flex items-center space-x-3">
+            <CheckCircle className="w-5 h-5 text-green-400" />
+            <span className="text-green-400">{successMessage}</span>
+          </div>
+        )} {/*Habra que cambiar los colores probablemente*/}
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-12">
@@ -551,12 +585,18 @@ const TeamPage = () => {
                   {userTeamRole === 'Coach' || userTeamRole === 'Capitán' && (
                     <div className="flex flex-col sm:flex-row gap-3">
                       <button
-                        onClick={handleInvitePlayer}
+                        onClick={() => setIsInviteOpen(true)}
                         className="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-300 flex items-center justify-center space-x-2"
                       >
                         <UserPlus className="w-5 h-5" />
                         <span>Invitar Jugador</span>
                       </button>
+                      <InvitePlayerModal
+                        isOpen={isInviteOpen}
+                        teamId={teamData!.teamId}
+                        onClose={() => setIsInviteOpen(false)}
+                        onInviteSuccess={handleInviteSuccess}
+                      />
                       <button
                         onClick={handleEditTeam}
                         className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-300 flex items-center justify-center space-x-2"

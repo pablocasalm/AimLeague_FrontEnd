@@ -1,8 +1,10 @@
+// src/components/DashboardHeader.tsx
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Target, User, LogOut } from 'lucide-react';
+import NotificationButton from './NotificationButton';
 
-const DashboardHeader = () => {
+const DashboardHeader: React.FC = () => {
   const navigate = useNavigate();
   const username = localStorage.getItem('username') || 'Usuario';
   const userRole = localStorage.getItem('userRole') || 'Usuario';
@@ -26,8 +28,9 @@ const DashboardHeader = () => {
             </h1>
           </div>
 
-          {/* User Info and Logout */}
+          {/* User Info, Notifications & Logout */}
           <div className="flex items-center space-x-4">
+            {/* User Info */}
             <div className="flex items-center space-x-2 text-gray-300">
               <User className="w-5 h-5" />
               <div className="flex flex-col">
@@ -35,6 +38,12 @@ const DashboardHeader = () => {
                 <span className="text-xs text-cyan-400">({userRole})</span>
               </div>
             </div>
+
+            {/* Notifications Button (Message Icon) */}
+            {/* Notifications */}
+            <NotificationButton />
+
+            {/* Logout */}
             <button
               onClick={handleLogout}
               className="flex items-center space-x-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors duration-300"
