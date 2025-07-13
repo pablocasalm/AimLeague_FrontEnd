@@ -20,21 +20,26 @@ import {
 } from 'lucide-react';
 import DashboardHeader from '../components/DashboardHeader';
 import {teamService} from '../../services/teamService';
-import { setNumber } from '../utils/storageNumber';
+import { getNumber, setNumber } from '../utils/storageNumber';
+import { UserRole } from '../utils/roleMapping';
 
-interface TeamMember {
-  nombre: string;
-  rol: 'Capitán' | 'Jugador' | 'Suplente' | 'Coach';
-  discord: string;
-}
 
 interface Team {
-  nombre: string;
-  logo: string;
-  miembros: TeamMember[];
-  soyCapitan: boolean;
-  soyCoach: boolean;
-  tieneManagement: boolean;
+  TeamId: number;
+  TeamName: string;
+  Members: TeamMember[];
+  ImageUrl?: string;
+  Wins: number;
+  TournamentsPlayed: number;
+  MatchesPlayed: number;
+}
+
+interface TeamMember{
+  UserId: number;
+  Username: string;
+  FirstName: string;
+  LastName: string;
+  TeamRole: string;
 }
 
 interface CreateTeam {
@@ -54,6 +59,7 @@ const TeamPage = () => {
   const { teamId } = useParams<{ teamId: string }>();
   const username = localStorage.getItem('username') || 'user1';
   const userRole = localStorage.getItem('userRole') || 'Usuario';
+  const userTeamRole = localStorage.getItem('userTeamRole') || 'Jugador';
 
   // Check if user should have access to this page
   const hasTeamAccess = userRole === 'Jugador' || userRole === 'Usuario' || userRole === 'Coach';
@@ -71,7 +77,27 @@ const TeamPage = () => {
       navigate('/dashboard');
       return;
     }
+
+    const load = async () => {
+      try {
+        
+          const data = await teamService.getTeamInfo(getNumber('teamid'));
+          setTeamData(data);
+          
+        
+      } catch (e: any) {
+        console.error('Error loading team data:', e);
+        setError('Error al cargar los datos del equipo');
+      } finally {
+        setIsLoading(false);
+      }
+
+    };
+
+    load();
   }, [navigate, hasTeamAccess]);
+
+
 
   // Determine team state based on username
   const getTeamState = (specificTeamId?: string) => {
@@ -210,7 +236,15 @@ const TeamPage = () => {
 
   const { hasTeam: initialHasTeam, teamData: initialTeamData } = getTeamState(teamId);
   const [hasTeam, setHasTeam] = useState(initialHasTeam);
-  const [teamData, setTeamData] = useState<Team | null>(initialTeamData);
+  const [teamData, setTeamData] = useState<Team | null>({
+    TeamId: -1,
+    TeamName: '',
+    Members: [],
+    ImageUrl: '',
+    Wins: 0,
+    TournamentsPlayed: 0,
+    MatchesPlayed: 0,
+  });
   const [isCreatingTeam, setIsCreatingTeam] = useState(false);
   const [Error, setError] = useState<string | null>(null);
   const [IsLoading, setIsLoading] = useState(false);
@@ -263,9 +297,18 @@ const TeamPage = () => {
     alert('Funcionalidad de invitar jugador - próximamente');
   };
 
-  const handleRemovePlayer = (playerName: string) => {
-    if (confirm(`¿Estás seguro de que quieres eliminar a ${playerName} del equipo?`)) {
-      alert(`${playerName} ha sido eliminado del equipo`);
+  const handleRemovePlayer = async (memberId: number) => {
+    if (!teamData) return;
+    setIsLoading(true);
+    try {
+      await teamService.removeMember({ TeamId: teamData.TeamId, UserId: memberId });
+      // recargo lista
+      const data = await teamService.getTeamInfo(teamData.TeamId);
+      setTeamData(data);
+    } catch (e: any) {
+      setError(e.message || 'Error eliminando miembro');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -273,8 +316,8 @@ const TeamPage = () => {
     alert('Funcionalidad de editar equipo - próximamente');
   };
 
-  const getRoleIcon = (rol: TeamMember['rol']) => {
-    switch (rol) {
+  const getRoleIcon = (role: string) => {
+    switch (role) {
       case 'Capitán':
         return <Crown className="w-5 h-5 text-yellow-400" />;
       case 'Coach':
@@ -284,8 +327,8 @@ const TeamPage = () => {
     }
   };
 
-  const getRoleBadgeColor = (rol: TeamMember['rol']) => {
-    switch (rol) {
+  const getRoleBadgeColor = (role: string) => {
+    switch (role) {
       case 'Capitán':
         return 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30';
       case 'Coach':
@@ -297,17 +340,14 @@ const TeamPage = () => {
     }
   };
 
-  const getManagementMessage = () => {
-    if (teamData?.soyCapitan) {
+  const getManagementMessage = (role: string) => {
+    if (role === 'Capitán') {
       return null; // No message needed for captains
     }
-    if (teamData?.soyCoach) {
+    if (role === 'Coach') {
       return null; // No message needed for coaches
     }
-    if (teamData?.miembros.some(m => m.rol === 'Coach')) {
-      return "Solo tu entrenador puede realizar cambios en el equipo.";
-    }
-    return "Contacta al capitán para realizar cambios en el equipo.";
+    return "No puedes realizar cambios en el equipo.";
   };
 
   // Determine back link based on user role and context
@@ -462,21 +502,21 @@ const TeamPage = () => {
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex items-center space-x-4 mb-4 lg:mb-0">
                     <img 
-                      src={teamData.logo} 
+                      src={teamData.ImageUrl || 'https://via.placeholder.com/100'} 
                       alt="Team Logo" 
                       className="w-20 h-20 rounded-lg object-cover border-2 border-cyan-500/30"
                     />
                     <div>
-                      <h2 className="text-3xl font-bold text-white">{teamData.nombre}</h2>
-                      <p className="text-gray-400">{teamData.miembros.length} miembros</p>
+                      <h2 className="text-3xl font-bold text-white">{teamData.TeamName}</h2>
+                      <p className="text-gray-400">{teamData.Members.length} miembros</p>
                       <div className="flex items-center space-x-4 mt-2">
-                        {teamData.soyCapitan && (
+                        {userTeamRole === "Capitán" && (
                           <div className="flex items-center space-x-2">
                             <Crown className="w-5 h-5 text-yellow-400" />
                             <span className="text-yellow-400 font-semibold">Eres el capitán</span>
                           </div>
                         )}
-                        {teamData.soyCoach && (
+                        {userTeamRole === 'Coach' && (
                           <div className="flex items-center space-x-2">
                             <GraduationCap className="w-5 h-5 text-purple-400" />
                             <span className="text-purple-400 font-semibold">Eres el entrenador</span>
@@ -486,7 +526,7 @@ const TeamPage = () => {
                     </div>
                   </div>
 
-                  {teamData.tieneManagement && (
+                  {userTeamRole === 'Coach' || userTeamRole === 'Capitán' && (
                     <div className="flex flex-col sm:flex-row gap-3">
                       <button
                         onClick={handleInvitePlayer}
@@ -511,31 +551,31 @@ const TeamPage = () => {
               <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
                 <h3 className="text-2xl font-bold text-white mb-6">Miembros del Equipo</h3>
                 <div className="space-y-4">
-                  {teamData.miembros.map((miembro, index) => (
+                  {teamData.Members.map((miembro, index) => (
                     <div key={index} className="bg-gray-900 border border-gray-600 rounded-lg p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
                           <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center">
                             <span className="text-white font-bold">
-                              {miembro.nombre.charAt(0).toUpperCase()}
+                              {miembro.Username.charAt(0).toUpperCase()}
                             </span>
                           </div>
                           <div>
                             <div className="flex items-center space-x-3">
-                              <span className="text-white font-semibold text-lg">{miembro.nombre}</span>
-                              {getRoleIcon(miembro.rol)}
-                              <span className={`text-xs px-3 py-1 rounded-full font-medium ${getRoleBadgeColor(miembro.rol)}`}>
-                                {miembro.rol}
+                              <span className="text-white font-semibold text-lg">{miembro.Username}</span>
+                              {getRoleIcon(miembro.TeamRole)}
+                              <span className={`text-xs px-3 py-1 rounded-full font-medium ${getRoleBadgeColor(miembro.TeamRole)}`}>
+                                {miembro.TeamRole}
                               </span>
                             </div>
-                            <p className="text-gray-400">{miembro.discord}</p>
+                            <p className="text-gray-400">{miembro.FirstName} {miembro.LastName}</p>
                           </div>
                         </div>
                         
-                        {teamData.tieneManagement && miembro.rol !== 'Capitán' && miembro.rol !== 'Coach' && (
+                        {(userTeamRole === 'Capitán' || userTeamRole === 'Coach') && miembro.TeamRole !== 'Capitán' && miembro.TeamRole !== 'Coach' && (
                           <div className="flex items-center space-x-2">
                             <button
-                              onClick={() => handleRemovePlayer(miembro.nombre)}
+                              onClick={() => handleRemovePlayer(miembro.UserId)}
                               className="text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-red-500/10 transition-colors duration-300"
                               title="Eliminar jugador"
                             >
@@ -554,13 +594,13 @@ const TeamPage = () => {
                   ))}
                 </div>
 
-                {!teamData.tieneManagement && (
+                {userTeamRole === 'None' && (
                   <div className="mt-6 bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
                     <p className="text-blue-400 text-center">
-                      {getManagementMessage()}
+                      {getManagementMessage(userTeamRole)}
                     </p>
                   </div>
-                )}
+                )}  
               </div>
 
               {/* Team Statistics */}
@@ -570,23 +610,23 @@ const TeamPage = () => {
                   <div className="bg-gray-900 border border-gray-600 rounded-lg p-6 text-center hover:border-cyan-500/50 transition-colors duration-300">
                     <Trophy className="w-12 h-12 text-cyan-400 mx-auto mb-4" />
                     <div className="text-3xl font-bold text-cyan-400 mb-2">
-                      {teamData.nombre === "Team Pro" ? "5" : "2"}
+                      {teamData.TournamentsPlayed}
                     </div>
                     <div className="text-gray-300 font-semibold">Torneos Jugados</div>
                   </div>
                   <div className="bg-gray-900 border border-gray-600 rounded-lg p-6 text-center hover:border-cyan-500/50 transition-colors duration-300">
                     <Award className="w-12 h-12 text-cyan-400 mx-auto mb-4" />
                     <div className="text-3xl font-bold text-cyan-400 mb-2">
-                      {teamData.nombre === "Team Pro" ? "3" : "1"}
+                      {teamData.Wins}
                     </div>
                     <div className="text-gray-300 font-semibold">Victorias</div>
                   </div>
                   <div className="bg-gray-900 border border-gray-600 rounded-lg p-6 text-center hover:border-cyan-500/50 transition-colors duration-300">
                     <TrendingUp className="w-12 h-12 text-cyan-400 mx-auto mb-4" />
                     <div className="text-3xl font-bold text-cyan-400 mb-2">
-                      {teamData.nombre === "Team Pro" ? "#8" : "#25"}
+                      {teamData.MatchesPlayed}
                     </div>
-                    <div className="text-gray-300 font-semibold">Ranking del Equipo</div>
+                    <div className="text-gray-300 font-semibold">Partidos Jugados</div>
                   </div>
                 </div>
               </div>
@@ -597,7 +637,7 @@ const TeamPage = () => {
                   ¿Listo para competir?
                 </h3>
                 <p className="text-gray-300 text-center mb-6">
-                  Tu equipo está {teamData.nombre === "Team Pro" ? "experimentado y" : ""} listo para participar en torneos.
+                  Tu equipo está {teamData.TournamentsPlayed > 5 ? "experimentado y" : ""} listo para participar en torneos.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Link

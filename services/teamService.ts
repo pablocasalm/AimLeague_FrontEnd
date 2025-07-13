@@ -2,8 +2,9 @@ import { apiClient } from './apiClient';
 
 export const teamService = {
     
-    getTeamInfo: (teamId: any) => apiClient('Team/GetTeamInfo', {
+    getTeamInfo: (teamId: any) => apiClient(`/Team/GetTeamInfo?teamId=${teamId}`, {
         method: 'GET',
+
     }),
 
     createTeam: (teamData: { TeamName: string, TeamRole: Number, ImageUrl?: string}) => apiClient('/Team/CreateTeam' , {
@@ -16,7 +17,10 @@ export const teamService = {
         body: JSON.stringify(joinTeamData),
     }),
 
-    removeMember: (removeMemberData: any) => apiClient('Team/removeMember', {
+    removeMember: (removeMemberData: {
+        TeamId: number,
+        UserId: number
+    }) => apiClient('Team/removeMember', {
         method: 'DELETE',
         body: JSON.stringify(removeMemberData),
     }), 
