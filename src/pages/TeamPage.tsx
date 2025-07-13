@@ -22,24 +22,31 @@ import DashboardHeader from '../components/DashboardHeader';
 import {teamService} from '../../services/teamService';
 import { getNumber, setNumber } from '../utils/storageNumber';
 import { UserRole } from '../utils/roleMapping';
+import { mapRole} from '../utils/teamRoleMapping';
 
 
 interface Team {
-  TeamId: number;
-  TeamName: string;
-  Members: TeamMember[];
+  teamId: number;
+  teamName: string;
+  members: TeamMember[];
   ImageUrl?: string;
-  Wins: number;
-  TournamentsPlayed: number;
-  MatchesPlayed: number;
+  membersRole: MembersRole[];
+  wins: number;
+  tournamentsPlayed: number;
+  matchesPlayed: number;
 }
 
 interface TeamMember{
-  UserId: number;
-  Username: string;
-  FirstName: string;
-  LastName: string;
-  TeamRole: string;
+  userId: number;
+  username: string;
+  firstName: string;
+  lastName: string;
+  teamRole: string;
+}
+
+interface MembersRole {
+  userId: number;
+  role: string;
 }
 
 interface CreateTeam {
@@ -83,6 +90,8 @@ const TeamPage = () => {
         
           const data = await teamService.getTeamInfo(getNumber('teamid'));
           setTeamData(data);
+          mapMemberRoleToTeamRole(data.members, data.membersRole);
+          setHasTeam(true);
           
         
       } catch (e: any) {
@@ -96,6 +105,18 @@ const TeamPage = () => {
 
     load();
   }, [navigate, hasTeamAccess]);
+
+  const mapMemberRoleToTeamRole = (TeamMembers: TeamMember[], MembersRole: MembersRole[]): void => {
+    MembersRole.forEach(roleMember => {
+      const member = TeamMembers.find(m => m.userId === roleMember.userId);
+      if (member) {
+        member.teamRole = mapRole(roleMember.role);
+        if (localStorage.getItem('username') === member.username) {
+              localStorage.setItem('userTeamRole', member.teamRole);    // MAY REDUNDANT SOMETIMES
+        }
+      }
+    })
+  }
 
 
 
@@ -237,13 +258,14 @@ const TeamPage = () => {
   const { hasTeam: initialHasTeam, teamData: initialTeamData } = getTeamState(teamId);
   const [hasTeam, setHasTeam] = useState(initialHasTeam);
   const [teamData, setTeamData] = useState<Team | null>({
-    TeamId: -1,
-    TeamName: '',
-    Members: [],
+    teamId: -1,
+    teamName: '',
+    members: [],
     ImageUrl: '',
-    Wins: 0,
-    TournamentsPlayed: 0,
-    MatchesPlayed: 0,
+    membersRole: [],
+    wins: 0,
+    tournamentsPlayed: 0,
+    matchesPlayed: 0,
   });
   const [isCreatingTeam, setIsCreatingTeam] = useState(false);
   const [Error, setError] = useState<string | null>(null);
@@ -301,9 +323,9 @@ const TeamPage = () => {
     if (!teamData) return;
     setIsLoading(true);
     try {
-      await teamService.removeMember({ TeamId: teamData.TeamId, UserId: memberId });
+      await teamService.removeMember({ TeamId: teamData.teamId, UserId: memberId });
       // recargo lista
-      const data = await teamService.getTeamInfo(teamData.TeamId);
+      const data = await teamService.getTeamInfo(teamData.teamId);
       setTeamData(data);
     } catch (e: any) {
       setError(e.message || 'Error eliminando miembro');
@@ -507,8 +529,8 @@ const TeamPage = () => {
                       className="w-20 h-20 rounded-lg object-cover border-2 border-cyan-500/30"
                     />
                     <div>
-                      <h2 className="text-3xl font-bold text-white">{teamData.TeamName}</h2>
-                      <p className="text-gray-400">{teamData.Members.length} miembros</p>
+                      <h2 className="text-3xl font-bold text-white">{teamData.teamName}</h2>
+                      <p className="text-gray-400">{teamData.members.length} miembros</p>
                       <div className="flex items-center space-x-4 mt-2">
                         {userTeamRole === "Capitán" && (
                           <div className="flex items-center space-x-2">
@@ -551,31 +573,31 @@ const TeamPage = () => {
               <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
                 <h3 className="text-2xl font-bold text-white mb-6">Miembros del Equipo</h3>
                 <div className="space-y-4">
-                  {teamData.Members.map((miembro, index) => (
+                  {teamData.members.map((miembro, index) => (
                     <div key={index} className="bg-gray-900 border border-gray-600 rounded-lg p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
                           <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center">
                             <span className="text-white font-bold">
-                              {miembro.Username.charAt(0).toUpperCase()}
+                              {miembro.username.charAt(0).toUpperCase()}
                             </span>
                           </div>
                           <div>
                             <div className="flex items-center space-x-3">
-                              <span className="text-white font-semibold text-lg">{miembro.Username}</span>
-                              {getRoleIcon(miembro.TeamRole)}
-                              <span className={`text-xs px-3 py-1 rounded-full font-medium ${getRoleBadgeColor(miembro.TeamRole)}`}>
-                                {miembro.TeamRole}
+                              <span className="text-white font-semibold text-lg">{miembro.username}</span>
+                              {getRoleIcon(miembro.teamRole)}
+                              <span className={`text-xs px-3 py-1 rounded-full font-medium ${getRoleBadgeColor(miembro.teamRole)}`}>
+                                {miembro.teamRole}
                               </span>
                             </div>
-                            <p className="text-gray-400">{miembro.FirstName} {miembro.LastName}</p>
+                            <p className="text-gray-400">{miembro.firstName} {miembro.lastName}</p>
                           </div>
                         </div>
                         
-                        {(userTeamRole === 'Capitán' || userTeamRole === 'Coach') && miembro.TeamRole !== 'Capitán' && miembro.TeamRole !== 'Coach' && (
+                        {(userTeamRole === 'Capitán' || userTeamRole === 'Coach') && miembro.teamRole !== 'Capitán' && miembro.teamRole !== 'Coach' && (
                           <div className="flex items-center space-x-2">
                             <button
-                              onClick={() => handleRemovePlayer(miembro.UserId)}
+                              onClick={() => handleRemovePlayer(miembro.userId)}
                               className="text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-red-500/10 transition-colors duration-300"
                               title="Eliminar jugador"
                             >
@@ -610,21 +632,21 @@ const TeamPage = () => {
                   <div className="bg-gray-900 border border-gray-600 rounded-lg p-6 text-center hover:border-cyan-500/50 transition-colors duration-300">
                     <Trophy className="w-12 h-12 text-cyan-400 mx-auto mb-4" />
                     <div className="text-3xl font-bold text-cyan-400 mb-2">
-                      {teamData.TournamentsPlayed}
+                      {teamData.tournamentsPlayed}
                     </div>
                     <div className="text-gray-300 font-semibold">Torneos Jugados</div>
                   </div>
                   <div className="bg-gray-900 border border-gray-600 rounded-lg p-6 text-center hover:border-cyan-500/50 transition-colors duration-300">
                     <Award className="w-12 h-12 text-cyan-400 mx-auto mb-4" />
                     <div className="text-3xl font-bold text-cyan-400 mb-2">
-                      {teamData.Wins}
+                      {teamData.wins}
                     </div>
                     <div className="text-gray-300 font-semibold">Victorias</div>
                   </div>
                   <div className="bg-gray-900 border border-gray-600 rounded-lg p-6 text-center hover:border-cyan-500/50 transition-colors duration-300">
                     <TrendingUp className="w-12 h-12 text-cyan-400 mx-auto mb-4" />
                     <div className="text-3xl font-bold text-cyan-400 mb-2">
-                      {teamData.MatchesPlayed}
+                      {teamData.matchesPlayed}
                     </div>
                     <div className="text-gray-300 font-semibold">Partidos Jugados</div>
                   </div>
@@ -637,7 +659,7 @@ const TeamPage = () => {
                   ¿Listo para competir?
                 </h3>
                 <p className="text-gray-300 text-center mb-6">
-                  Tu equipo está {teamData.TournamentsPlayed > 5 ? "experimentado y" : ""} listo para participar en torneos.
+                  Tu equipo está {teamData.tournamentsPlayed > 5 ? "experimentado y" : ""} listo para participar en torneos.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Link
