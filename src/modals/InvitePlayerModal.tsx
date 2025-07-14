@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, userService } from '../../services/userService';
 import { teamService } from '../../services/teamService';
 import { AlertCircle, X } from 'lucide-react';
+import { getNumber } from '../utils/storageNumber';
 
 interface InvitePlayerModalProps {
   isOpen: boolean;
@@ -48,7 +49,8 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
     setInviting(true);
     setError(null);
     try {
-      await teamService.invitePlayer({ teamId, userId: selected.id });
+      teamId = getNumber('teamid') || teamId; // Asegurarse de que teamId esté definido
+      await teamService.invitePlayer({ TeamId: teamId, UserId: selected.id });
       onInviteSuccess(selected);
       onClose();
     } catch (e: any) {

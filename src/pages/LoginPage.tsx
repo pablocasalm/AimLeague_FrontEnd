@@ -21,6 +21,7 @@ interface LoginResult {
   Points: number,
   Ranking: number,
   TeamId: number;
+  UserId: number;
 }
 
 const LoginPage: React.FC = () => {
@@ -60,9 +61,12 @@ const LoginPage: React.FC = () => {
         setNumber('wins', result.Wins);
         setNumber('points', result.Points);
         setNumber('ranking', result.Ranking);
+        setNumber('userid', result.UserId);
         //setNumber('teamid', result.TeamId);
-        if (result.TeamId !== 0) {
+        if (result.TeamId !== 0 || getNumber('teamid') !== result.TeamId) {
           setNumber('teamid', result.TeamId);
+        } else {
+          localStorage.removeItem('teamid');  // Eliminar teamId si es 0
         }
         localStorage.setItem('isLoggedIn', 'true');     //POSIBLE ERROR
         navigate('/dashboard');

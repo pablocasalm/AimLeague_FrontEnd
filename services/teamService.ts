@@ -1,5 +1,11 @@
 import { apiClient } from './apiClient';
 
+export enum TeamRoleEnum {
+  None = 0,
+  Capitan = 1,
+  Coach = 2
+}
+
 export const teamService = {
     
     getTeamInfo: (teamId: any) => apiClient(`/Team/GetTeamInfo?teamId=${teamId}`, {
@@ -12,15 +18,18 @@ export const teamService = {
         body: JSON.stringify(teamData),
     }),
 
-    invitePlayer: (joinTeamData: any) => apiClient('Team/InvitePlayer', {
+    invitePlayer: (inviteTeamData: {
+        TeamId: number,
+        UserId: number
+    }) => apiClient('/Team/InvitePlayer', {
         method: 'POST',
-        body: JSON.stringify(joinTeamData),
+        body: JSON.stringify(inviteTeamData),
     }),
 
     removeMember: (removeMemberData: {
         TeamId: number,
         UserId: number
-    }) => apiClient('Team/removeMember', {
+    }) => apiClient('/Team/removeMember', {
         method: 'DELETE',
         body: JSON.stringify(removeMemberData),
     }), 
@@ -34,7 +43,7 @@ export const teamService = {
         relatedEntityId: number;
         createdAt: string;
       }[]> =>
-        apiClient('/Notifications', { method: 'GET' }),
+        apiClient('/Notifications/GetUnreadNotifications', { method: 'GET' }),
     
       markRead: (notificationId: number) =>
         apiClient('/Notifications/MarkRead', {
@@ -53,5 +62,15 @@ export const teamService = {
           method: 'POST',
           body: JSON.stringify(notificationId)
         }),
+
+          exitTeam: (data: {
+            UserId: number;
+            TeamId: number;
+            TeamRole: TeamRoleEnum;
+          }) =>
+            apiClient('/Team/ExitTeam', {
+              method: 'POST',
+              body: JSON.stringify(data),
+            }),
     
 }

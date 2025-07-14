@@ -16,15 +16,17 @@ import {
   Upload,
   AlertCircle,
   CheckCircle,
-  GraduationCap
+  GraduationCap,
+  RefreshCcw
 } from 'lucide-react';
 import DashboardHeader from '../components/DashboardHeader';
-import {teamService} from '../../services/teamService';
+import {teamService, TeamRoleEnum} from '../../services/teamService';
 import { getNumber, setNumber } from '../utils/storageNumber';
 import { UserRole } from '../utils/roleMapping';
 import { mapRole} from '../utils/teamRoleMapping';
 import InvitePlayerModal from '../modals/InvitePlayerModal';
 import { User } from '../../services/userService';
+
 
 
 interface Team {
@@ -122,145 +124,16 @@ const TeamPage = () => {
     })
   }
 
+  const mapStringToRoleEnum = (role: string): TeamRoleEnum => {
+  switch (role) {
+    case 'Capitán': return TeamRoleEnum.Capitan;
+    case 'Coach':   return TeamRoleEnum.Coach;
+    default:        return TeamRoleEnum.None;
+  }
+};
 
-
-  // Determine team state based on username
-  const getTeamState = (specificTeamId?: string) => {
-    // If teamId is provided (from URL), load specific team for coach
-    if (specificTeamId && userRole === 'Coach') {
-      return getCoachTeamData(specificTeamId);
-    }
-    
-    // Default behavior for non-coach users
-    switch (username) {
-      case 'user1':
-        return {
-          hasTeam: true,
-          teamData: {
-            nombre: "Team Básico",
-            logo: "https://images.pexels.com/photos/1040945/pexels-photo-1040945.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop",
-            miembros: [
-              { nombre: "user1", rol: "Capitán" as const, discord: "@user1" },
-              { nombre: "Carlos López", rol: "Jugador" as const, discord: "@carlos_lopez" },
-              { nombre: "Ana García", rol: "Jugador" as const, discord: "@ana_garcia" },
-              { nombre: "Miguel Torres", rol: "Suplente" as const, discord: "@miguel_torres" }
-            ],
-            soyCapitan: true,
-            soyCoach: false,
-            tieneManagement: true
-          }
-        };
-      
-      case 'player1':
-        return {
-          hasTeam: true,
-          teamData: {
-            nombre: "Team Pro",
-            logo: "https://images.pexels.com/photos/163064/play-stone-network-networked-interactive-163064.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop",
-            miembros: [
-              { nombre: "player1", rol: "Jugador" as const, discord: "@player1" },
-              { nombre: "Roberto Silva", rol: "Jugador" as const, discord: "@roberto_silva" },
-              { nombre: "Laura Martín", rol: "Jugador" as const, discord: "@laura_martin" },
-              { nombre: "Diego Fernández", rol: "Jugador" as const, discord: "@diego_fernandez" },
-              { nombre: "Carmen Ruiz", rol: "Suplente" as const, discord: "@carmen_ruiz" },
-              { nombre: "coach1", rol: "Coach" as const, discord: "@coach1" }
-            ],
-            soyCapitan: false,
-            soyCoach: false,
-            tieneManagement: false
-          }
-        };
-      
-      case 'coach1':
-        return {
-          hasTeam: true,
-          teamData: {
-            nombre: "Team Pro",
-            logo: "https://images.pexels.com/photos/163064/play-stone-network-networked-interactive-163064.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop",
-            miembros: [
-              { nombre: "player1", rol: "Jugador" as const, discord: "@player1" },
-              { nombre: "Roberto Silva", rol: "Jugador" as const, discord: "@roberto_silva" },
-              { nombre: "Laura Martín", rol: "Jugador" as const, discord: "@laura_martin" },
-              { nombre: "Diego Fernández", rol: "Jugador" as const, discord: "@diego_fernandez" },
-              { nombre: "Carmen Ruiz", rol: "Suplente" as const, discord: "@carmen_ruiz" },
-              { nombre: "coach1", rol: "Coach" as const, discord: "@coach1" }
-            ],
-            soyCapitan: false,
-            soyCoach: true,
-            tieneManagement: true
-          }
-        };
-      
-      default:
-        return {
-          hasTeam: false,
-          teamData: null
-        };
-    }
-  };
-
-  // Get specific team data for coaches
-  const getCoachTeamData = (teamId: string) => {
-    const coachTeams = {
-      'team-pro': {
-        hasTeam: true,
-        teamData: {
-          nombre: "Team Pro",
-          logo: "https://images.pexels.com/photos/163064/play-stone-network-networked-interactive-163064.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop",
-          miembros: [
-            { nombre: "player1", rol: "Jugador" as const, discord: "@player1" },
-            { nombre: "Roberto Silva", rol: "Jugador" as const, discord: "@roberto_silva" },
-            { nombre: "Laura Martín", rol: "Jugador" as const, discord: "@laura_martin" },
-            { nombre: "Diego Fernández", rol: "Jugador" as const, discord: "@diego_fernandez" },
-            { nombre: "Carmen Ruiz", rol: "Suplente" as const, discord: "@carmen_ruiz" },
-            { nombre: "coach1", rol: "Coach" as const, discord: "@coach1" }
-          ],
-          soyCapitan: false,
-          soyCoach: true,
-          tieneManagement: true
-        }
-      },
-      'team-sigma': {
-        hasTeam: true,
-        teamData: {
-          nombre: "Team Sigma",
-          logo: "https://images.pexels.com/photos/1040945/pexels-photo-1040945.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop",
-          miembros: [
-            { nombre: "Alex Moreno", rol: "Jugador" as const, discord: "@alex_moreno" },
-            { nombre: "Sofia Herrera", rol: "Jugador" as const, discord: "@sofia_herrera" },
-            { nombre: "Pablo Jiménez", rol: "Jugador" as const, discord: "@pablo_jimenez" },
-            { nombre: "Elena Castro", rol: "Jugador" as const, discord: "@elena_castro" },
-            { nombre: "coach1", rol: "Coach" as const, discord: "@coach1" }
-          ],
-          soyCapitan: false,
-          soyCoach: true,
-          tieneManagement: true
-        }
-      },
-      'team-alpha': {
-        hasTeam: true,
-        teamData: {
-          nombre: "Team Alpha",
-          logo: "https://images.pexels.com/photos/442576/pexels-photo-442576.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop",
-          miembros: [
-            { nombre: "Mario Vega", rol: "Jugador" as const, discord: "@mario_vega" },
-            { nombre: "Lucia Ramos", rol: "Jugador" as const, discord: "@lucia_ramos" },
-            { nombre: "Andrés Peña", rol: "Jugador" as const, discord: "@andres_pena" },
-            { nombre: "Natalia Ortiz", rol: "Suplente" as const, discord: "@natalia_ortiz" },
-            { nombre: "coach1", rol: "Coach" as const, discord: "@coach1" }
-          ],
-          soyCapitan: false,
-          soyCoach: true,
-          tieneManagement: true
-        }
-      }
-    };
-
-    return coachTeams[teamId as keyof typeof coachTeams] || { hasTeam: false, teamData: null };
-  };
-
-  const { hasTeam: initialHasTeam, teamData: initialTeamData } = getTeamState(teamId);
-  const [hasTeam, setHasTeam] = useState(initialHasTeam);
+ 
+  const [hasTeam, setHasTeam] = useState(false);
   const [teamData, setTeamData] = useState<Team | null>({
     teamId: -1,
     teamName: '',
@@ -303,6 +176,7 @@ const TeamPage = () => {
           setHasTeam(true);
           setIsCreatingTeam(false);
         }
+        loadTeamInfo();
     } catch (err: any) {
       console.error('CreateTeam error:', err);
       setError(err.message || 'Error de red al crear el equipo');
@@ -311,6 +185,43 @@ const TeamPage = () => {
     }
     
   };
+
+  const handleExitTeam = async () => {
+  if (!teamData) return;
+  setIsLoading(true);
+  setError(null);
+
+  try {
+    // 1) Obtener el userId actual desde perfil
+
+    const userId = getNumber('userid');
+    if (userId === null) {
+    return setError('No se pudo obtener tu ID de usuario, cierra sesión e inicia de nuevo para volver a cargar tu perfil.');
+    }
+
+    // 2) Llamar exitTeam
+    await teamService.exitTeam({
+      UserId: userId,
+      TeamId: teamData.teamId,
+      TeamRole: mapStringToRoleEnum(userTeamRole),
+    });
+
+    // 3) Redirigir o recargar
+    setSuccessMessage('Has abandonado el equipo correctamente.');
+    setNumber('teamid', 0); // Limpiar teamId
+    // opcional: limpiar teamData o navegar fuera
+    setTimeout(() => {
+      navigate('/dashboard');
+    }, 1500);
+
+  } catch (e: any) {
+    console.error('Error al salir del equipo:', e);
+    setError(e.message || 'No se pudo salir del equipo');
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   const handleInputChange = (field: keyof CreateTeam, value: string) => {
     setCreateTeamData(prev => ({
@@ -326,7 +237,8 @@ const TeamPage = () => {
   const loadTeamInfo = async () => {
     setIsLoading(true);
     setError(null);
-    try {
+    if (getNumber("teamid") !== null){
+      try {
       const data = await teamService.getTeamInfo(getNumber('teamid'));
       setTeamData(data);
       mapMemberRoleToTeamRole(data.members, data.membersRole);
@@ -336,6 +248,7 @@ const TeamPage = () => {
       setError('Error al cargar los datos del equipo');
     } finally {
       setIsLoading(false);
+    }
     }
   };
 
@@ -581,31 +494,44 @@ const TeamPage = () => {
                       </div>
                     </div>
                   </div>
-
-                  {userTeamRole === 'Coach' || userTeamRole === 'Capitán' && (
-                    <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                    <button
+                      onClick={loadTeamInfo}
+                      className="w-8 h-8 bg-gray-700 hover:bg-gray-600 rounded-md flex items-center justify-center transition-colors"
+                    >
+                      <RefreshCcw className="w-5 h-5 text-white" />
+                    </button>
+                    <button
+                        onClick={handleExitTeam}
+                        disabled={IsLoading}
+                        className="w-8 h-8 bg-red-600 hover:bg-red-700 rounded-md flex items-center justify-center transition-colors"
+                      >
+                        <Trash2 className="w-5 h-5 text-white" />
+                      </button>
                       <button
                         onClick={() => setIsInviteOpen(true)}
-                        className="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-300 flex items-center justify-center space-x-2"
+                        className="w-8 h-8 bg-cyan-500 hover:bg-cyan-600 rounded-md flex items-center justify-center transition-colors"
                       >
-                        <UserPlus className="w-5 h-5" />
-                        <span>Invitar Jugador</span>
+                        <UserPlus className="w-5 h-5 text-white" />
                       </button>
-                      <InvitePlayerModal
+                        <InvitePlayerModal
                         isOpen={isInviteOpen}
                         teamId={teamData!.teamId}
                         onClose={() => setIsInviteOpen(false)}
                         onInviteSuccess={handleInviteSuccess}
                       />
+                    
+                  {userTeamRole === 'Coach' || userTeamRole === 'Capitán' && (
+                    <div className="flex flex-col sm:flex-row gap-3">
                       <button
                         onClick={handleEditTeam}
-                        className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-300 flex items-center justify-center space-x-2"
+                        className="w-8 h-8 bg-gray-700 hover:bg-gray-600 rounded-md flex items-center justify-center transition-colors"
                       >
-                        <Edit className="w-5 h-5" />
-                        <span>Editar Equipo</span>
+                        <Edit className="w-5 h-5 text-white" />
                       </button>
                     </div>
                   )}
+                  </div>
                 </div>
               </div>
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { teamService } from '../../services/teamService';
 import { MessageSquare } from 'lucide-react';
+import { Navigate, useNavigate } from 'react-router-dom';
 
 export interface Notification {
   id: number;
@@ -46,6 +47,7 @@ const NotificationButton: React.FC = () => {
   async function onAccept(id: number) {
         await teamService.acceptInvitation(id);
         setNotes(notes.map(n => n.id === id ? { ...n, isRead: true } : n));
+        
     }
 
   const onReject = async (id: number) => {
