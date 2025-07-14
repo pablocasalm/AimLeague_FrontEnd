@@ -60,7 +60,10 @@ const LoginPage: React.FC = () => {
         setNumber('wins', result.Wins);
         setNumber('points', result.Points);
         setNumber('ranking', result.Ranking);
-        setNumber('teamid', result.TeamId);
+        //setNumber('teamid', result.TeamId);
+        if (result.TeamId !== 0) {
+          setNumber('teamid', result.TeamId);
+        }
         localStorage.setItem('isLoggedIn', 'true');     //POSIBLE ERROR
         navigate('/dashboard');
       }
