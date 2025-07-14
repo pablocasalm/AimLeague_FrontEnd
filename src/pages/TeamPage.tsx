@@ -22,10 +22,10 @@ import {
 import DashboardHeader from '../components/DashboardHeader';
 import {teamService, TeamRoleEnum} from '../../services/teamService';
 import { getNumber, setNumber } from '../utils/storageNumber';
-import { UserRole } from '../utils/roleMapping';
 import { mapRole} from '../utils/teamRoleMapping';
 import InvitePlayerModal from '../modals/InvitePlayerModal';
 import { User } from '../../services/userService';
+import { getRoleLabel } from '../utils/roleMapping';
 
 
 
@@ -60,22 +60,22 @@ interface CreateTeam {
 }
 
 interface CreateTeamResult {
-  TeamId: number,
-  Message: string,
-  Success: boolean,
+  teamId: number,
+  message: string,
+  success: boolean,
 }
 
 const TeamPage = () => {
   const navigate = useNavigate();
   const { teamId } = useParams<{ teamId: string }>();
-  const username = localStorage.getItem('username') || 'user1';
-  const userRole = localStorage.getItem('userRole') || 'Usuario';
+  const userRole = getRoleLabel(localStorage.getItem('userRole') ?? '') || 'Usuario';
   const userTeamRole = localStorage.getItem('userTeamRole') || 'Jugador';
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string|null>(null);
+  const [numericTeamId, setnumericTeamId] = useState<number>(parseInt(teamId? teamId : String(localStorage.getItem('teamid'))));
 
   // Check if user should have access to this page
-  const hasTeamAccess = userRole === 'Jugador' || userRole === 'Usuario' || userRole === 'Coach';
+  const hasTeamAccess = userRole === 'Jugador' || userRole === 'Usuario' || userRole === 'Entrenador';
 
   useEffect(() => {
     // Check if user is logged in
@@ -127,7 +127,7 @@ const TeamPage = () => {
   const mapStringToRoleEnum = (role: string): TeamRoleEnum => {
   switch (role) {
     case 'Capitán': return TeamRoleEnum.Capitan;
-    case 'Coach':   return TeamRoleEnum.Coach;
+    case 'Entrenador':   return TeamRoleEnum.Entrenador;
     default:        return TeamRoleEnum.None;
   }
 };
@@ -149,7 +149,7 @@ const TeamPage = () => {
   const [IsLoading, setIsLoading] = useState(false);
   const [CreateTeamData, setCreateTeamData] = useState<CreateTeam>({
     TeamName: '',
-    TeamRole: userRole == 'coach' ? 2 : 1,
+    TeamRole: userRole == 'Entrenador' ? 2 : 1,
     ImageUrl: '',
   });
 
@@ -169,14 +169,18 @@ const TeamPage = () => {
           TeamRole: CreateTeamData.TeamRole,
         }) as CreateTeamResult;
 
-        if (!result.Success) {
-          setError(result.Message || 'Error al crear el equipo');
+        if (!result.success) {
+          setError(result.message || 'Error al crear el equipo');
         } else {
-          setNumber('teamid', result.TeamId);
+          setNumber('teamid', result.teamId);
+          localStorage.setItem('teamid', String(result.teamId));
+          console.log('TeamId actual en local Storage', localStorage.getItem('teamid'));
+          console.log('TeamId actual en result', result.teamId);
+          setnumericTeamId(result.teamId);
           setHasTeam(true);
           setIsCreatingTeam(false);
         }
-        loadTeamInfo();
+        loadTeamInfo(result.teamId);
     } catch (err: any) {
       console.error('CreateTeam error:', err);
       setError(err.message || 'Error de red al crear el equipo');
@@ -230,16 +234,13 @@ const TeamPage = () => {
     }));
   }
 
-  const handleInvitePlayer = () => {
-    alert('Funcionalidad de invitar jugador - próximamente');
-  };
 
-  const loadTeamInfo = async () => {
+  const loadTeamInfo = async (teamId?: number) => {
     setIsLoading(true);
     setError(null);
-    if (getNumber("teamid") !== null){
-      try {
-      const data = await teamService.getTeamInfo(getNumber('teamid'));
+    if (numericTeamId !== null){
+    try {
+      const data = await teamService.getTeamInfo(numericTeamId === 0 ? (teamId ?? 0) : numericTeamId);
       setTeamData(data);
       mapMemberRoleToTeamRole(data.members, data.membersRole);
       setHasTeam(true);
@@ -281,7 +282,7 @@ const TeamPage = () => {
     switch (role) {
       case 'Capitán':
         return <Crown className="w-5 h-5 text-yellow-400" />;
-      case 'Coach':
+      case 'Entrenador':
         return <GraduationCap className="w-5 h-5 text-purple-400" />;
       default:
         return null;
@@ -292,7 +293,7 @@ const TeamPage = () => {
     switch (role) {
       case 'Capitán':
         return 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30';
-      case 'Coach':
+      case 'Entrenador':
         return 'bg-purple-500/20 text-purple-400 border border-purple-500/30';
       case 'Suplente':
         return 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
@@ -305,22 +306,22 @@ const TeamPage = () => {
     if (role === 'Capitán') {
       return null; // No message needed for captains
     }
-    if (role === 'Coach') {
-      return null; // No message needed for coaches
+    if (role === 'Entrenador') {
+      return null; // No message needed for Entrenadores
     }
     return "No puedes realizar cambios en el equipo.";
   };
 
   // Determine back link based on user role and context
   const getBackLink = () => {
-    if (userRole === 'Coach' && teamId) {
+    if (userRole === 'Entrenador' && teamId) {
       return '/dashboard/mis-equipos';
     }
     return '/dashboard';
   };
 
   const getBackText = () => {
-    if (userRole === 'Coach' && teamId) {
+    if (userRole === 'Entrenador' && teamId) {
       return 'Volver a Mis Equipos';
     }
     return 'Volver al Dashboard';
@@ -485,7 +486,7 @@ const TeamPage = () => {
                             <span className="text-yellow-400 font-semibold">Eres el capitán</span>
                           </div>
                         )}
-                        {userTeamRole === 'Coach' && (
+                        {userTeamRole === 'Entrenador' && (
                           <div className="flex items-center space-x-2">
                             <GraduationCap className="w-5 h-5 text-purple-400" />
                             <span className="text-purple-400 font-semibold">Eres el entrenador</span>
@@ -496,7 +497,7 @@ const TeamPage = () => {
                   </div>
                   <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
                     <button
-                      onClick={loadTeamInfo}
+                      onClick={() => loadTeamInfo()}
                       className="w-8 h-8 bg-gray-700 hover:bg-gray-600 rounded-md flex items-center justify-center transition-colors"
                     >
                       <RefreshCcw className="w-5 h-5 text-white" />
@@ -521,7 +522,7 @@ const TeamPage = () => {
                         onInviteSuccess={handleInviteSuccess}
                       />
                     
-                  {userTeamRole === 'Coach' || userTeamRole === 'Capitán' && (
+                  {userTeamRole === 'Entrenador' || userTeamRole === 'Capitán' && (
                     <div className="flex flex-col sm:flex-row gap-3">
                       <button
                         onClick={handleEditTeam}
@@ -560,7 +561,7 @@ const TeamPage = () => {
                           </div>
                         </div>
                         
-                        {(userTeamRole === 'Capitán' || userTeamRole === 'Coach') && miembro.teamRole !== 'Capitán' && miembro.teamRole !== 'Coach' && (
+                        {(userTeamRole === 'Capitán' || userTeamRole === 'Entrenador') && miembro.teamRole !== 'Capitán' && miembro.teamRole !== 'Entrenador' && (
                           <div className="flex items-center space-x-2">
                             <button
                               onClick={() => handleRemovePlayer(miembro.userId)}

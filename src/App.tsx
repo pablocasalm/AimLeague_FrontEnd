@@ -63,7 +63,7 @@ const AppContent = () => {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/dashboard/agenda" element={<AgendaPage />} />
-        <Route path="/dashboard/equipo" element={<TeamPage />} />
+        {/*<Route path="/dashboard/equipo" element={<TeamPage />} />*/}
         <Route path="/dashboard/mis-equipos" element={<TeamsListPage />} />
         <Route path="/dashboard/equipo/:teamId" element={<TeamPage />} />
         <Route path="/dashboard/torneos-disponibles" element={<AvailableTournamentsPage />} />

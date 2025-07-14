@@ -11,7 +11,7 @@ export type RawRole = 'None' | 'Capitan' | 'Coach';
 const rawToDisplayMap: Record<RawRole, string> = {
   None:    'Jugador',
   Capitan: 'Capitán',
-  Coach:   'Coach'
+  Coach:   'Entrenador'
 };
 
 /**

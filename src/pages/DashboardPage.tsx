@@ -18,11 +18,14 @@ import {
 } from 'lucide-react';
 import DashboardHeader from '../components/DashboardHeader';
 import { getNumber } from '../utils/storageNumber';
+import { getRoleLabel } from '../utils/roleMapping';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
   const username = localStorage.getItem('username') || 'user1';
   const userRole = localStorage.getItem('role') || 'Usuario';
+
+  
 
   useEffect(() => {
     // Check if user is logged in
@@ -39,7 +42,7 @@ const DashboardPage = () => {
         return 'Acceso a torneos activos.';
       case 'Jugador':
         return 'Acceso completo a torneos y academia.';
-      case 'Coach':
+      case 'Entrenador':
         return 'Acceso a la agenda de entrenamientos y jugadores.';
       case 'Admin':
         return 'Acceso al panel de gestión de torneos.';
@@ -72,11 +75,11 @@ const DashboardPage = () => {
   ];
 
   // Check if user should see team section
-  const shouldShowTeamSection = userRole === 'Jugador' || userRole === 'Usuario' || userRole === 'Coach';
+  const shouldShowTeamSection = userRole === 'Jugador' || userRole === 'Usuario' || userRole === 'Entrenador';
 
   // Determine team card configuration based on role
   const getTeamCardConfig = () => {
-    if (userRole === 'Coach') {
+    if (userRole === 'Entrenador') {
       return {
         title: 'Mis Equipos',
         description: 'Gestiona todos los equipos bajo tu supervisión.',
@@ -87,7 +90,7 @@ const DashboardPage = () => {
       return {
         title: 'Mi Equipo',
         description: 'Gestiona tu equipo, revisa miembros y coordina estrategias.',
-        link: '/dashboard/equipo',
+        link: `/dashboard/equipo/${localStorage.getItem('teamid')}`,
         icon: Shield
       };
     }
@@ -156,7 +159,7 @@ const DashboardPage = () => {
             </Link>
 
             {/* Conditional card based on user role */}
-            {userRole === 'Coach' ? (
+            {userRole === 'Entrenador' ? (
               <Link 
                 to="/dashboard/eventos"
                 className="bg-gray-800 border border-gray-700 rounded-lg p-6 hover:border-cyan-500/50 transition-all duration-300 hover:transform hover:scale-105 group"
@@ -207,8 +210,8 @@ const DashboardPage = () => {
             )}
           </div>
 
-          {/* Dashboard Stats - Only for non-Coach users */}
-          {userRole !== 'Coach' && (
+          {/* Dashboard Stats - Only for non-Entrenador users */}
+          {userRole !== 'Entrenador' && (
             <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-8">
               <div className="flex items-center space-x-3 mb-6">
                 <BarChart3 className="w-6 h-6 text-cyan-400" />
@@ -285,8 +288,8 @@ const DashboardPage = () => {
             )}
           </div>
           
-          {/* Quick Links - Only for non-Coach users */}
-          {userRole !== 'Coach' && (
+          {/* Quick Links - Only for non-Entrenador users */}
+          {userRole !== 'Entrenador' && (
             <div className="mt-8 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-lg p-6">
               <h3 className="text-xl font-bold text-white mb-4 text-center">
                 ¿Necesitas ayuda o quieres conectar con otros jugadores?

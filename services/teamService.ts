@@ -3,12 +3,12 @@ import { apiClient } from './apiClient';
 export enum TeamRoleEnum {
   None = 0,
   Capitan = 1,
-  Coach = 2
+  Entrenador = 2
 }
 
 export const teamService = {
     
-    getTeamInfo: (teamId: any) => apiClient(`/Team/GetTeamInfo?teamId=${teamId}`, {
+    getTeamInfo: (teamId: number) => apiClient(`/Team/GetTeamInfo?teamId=${teamId}`, {
         method: 'GET',
 
     }),
@@ -72,5 +72,10 @@ export const teamService = {
               method: 'POST',
               body: JSON.stringify(data),
             }),
+
+        getAllTeams: (userId: number) =>
+    apiClient(`/Team/GetAllTeams?query=${userId}`, {
+      method: 'GET',
+    }),
     
 }
