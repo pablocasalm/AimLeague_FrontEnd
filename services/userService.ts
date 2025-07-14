@@ -1,5 +1,15 @@
 import { apiClient } from "./apiClient";
 
+
+export interface User {
+    id:        number;
+    username:  string;
+    firstName: string;
+    lastName:  string;
+    /** URL de foto de perfil (opcional) */
+    photoUrl?: string;
+  }
+
 export const userService = {
 
     register: (registerData: {
@@ -23,6 +33,11 @@ export const userService = {
 
     getProfileInfo: () => apiClient('/User/getProfileInfo', {
         method: 'GET',
+    }),
+
+    searchUsers: (query: string): Promise<User[]> =>
+    apiClient(`/User/searchUsers?query=${encodeURIComponent(query)}`, {
+      method: "GET",
     }),
 
 
