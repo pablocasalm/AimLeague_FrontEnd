@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect , useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Calendar, 
@@ -13,6 +13,8 @@ import {
   Shield
 } from 'lucide-react';
 import DashboardHeader from '../components/DashboardHeader';
+import { agendaService } from '../../services/agendaService';
+import { getNumber } from '../utils/storageNumber';
 
 interface Event {
   id: number;
@@ -23,10 +25,16 @@ interface Event {
   descripcion?: string;
 }
 
+interface agenda {
+  events: Event[];
+  success: boolean;
+}
+
 const AgendaPage = () => {
   const navigate = useNavigate();
   const username = localStorage.getItem('username') || 'user1';
-  const userRole = localStorage.getItem('userRole') || 'Usuario';
+  const userRole = localStorage.getItem('role') || 'Usuario';
+  const userId = getNumber('userid') || 1; // Default to 1 if not set
 
   useEffect(() => {
     // Check if user is logged in
@@ -56,89 +64,23 @@ const AgendaPage = () => {
 
   const userTeam = getUserTeam();
 
-  // Mock events data - now with team assignments
-  const allEvents: Event[] = [
-    {
-      id: 1,
-      tipo: 'Torneo',
-      titulo: 'Partido vs Team Omega',
-      fecha: '12/07/2025 18:00',
-      equipoAsignado: 'Team Pro',
-      descripcion: 'Semifinal del torneo CS2 Clash - Julio. Mapa: Mirage'
-    },
-    {
-      id: 2,
-      tipo: 'Academia',
-      titulo: 'Entrenamiento de Aim',
-      fecha: '14/07/2025 20:00',
-      equipoAsignado: 'Team Pro',
-      descripcion: 'Sesión grupal de entrenamiento de puntería y crosshair placement'
-    },
-    {
-      id: 3,
-      tipo: 'Feedback',
-      titulo: 'Revisión de demo',
-      fecha: '15/07/2025 17:00',
-      equipoAsignado: 'Team Pro',
-      descripcion: 'Análisis de la partida anterior con coach especializado'
-    },
-    {
-      id: 4,
-      tipo: 'Torneo',
-      titulo: 'Final Copa de Verano',
-      fecha: '18/07/2025 19:30',
-      equipoAsignado: 'Team Básico',
-      descripcion: 'Gran final del torneo más importante del año'
-    },
-    {
-      id: 5,
-      tipo: 'Entrenamiento',
-      titulo: 'Estrategias de Equipo',
-      fecha: '20/07/2025 21:00',
-      equipoAsignado: 'Team Pro',
-      descripcion: 'Tácticas avanzadas y coordinación grupal'
-    },
-    {
-      id: 6,
-      tipo: 'Academia',
-      titulo: 'Análisis de Mapas',
-      fecha: '22/07/2025 18:30',
-      equipoAsignado: 'Team Básico',
-      descripcion: 'Estudio detallado de callouts y posiciones en Dust2'
-    },
-    {
-      id: 7,
-      tipo: 'Torneo',
-      titulo: 'Partido vs Team Delta',
-      fecha: '25/07/2025 19:00',
-      equipoAsignado: 'Team Básico',
-      descripcion: 'Cuartos de final - Torneo Amateur League'
-    },
-    {
-      id: 8,
-      tipo: 'Entrenamiento',
-      titulo: 'Scrimmage vs Team Alpha',
-      fecha: '28/07/2025 20:30',
-      equipoAsignado: 'Team Pro',
-      descripcion: 'Partida de práctica para preparar el próximo torneo'
-    },
-    {
-      id: 9,
-      tipo: 'Entrenamiento',
-      titulo: 'Sesión de Estrategias',
-      fecha: '30/07/2025 19:00',
-      equipoAsignado: 'Team Sigma',
-      descripcion: 'Desarrollo de nuevas tácticas para el próximo torneo'
-    },
-    {
-      id: 10,
-      tipo: 'Academia',
-      titulo: 'Entrenamiento Individual',
-      fecha: '02/08/2025 18:00',
-      equipoAsignado: 'Team Alpha',
-      descripcion: 'Sesiones personalizadas de mejora técnica'
+  const [allEvents, setAllEvents] = useState<Event[]>([]);
+  const [IsLoading, setIsLoading] = useState(false);
+
+  const loadAgendaEvents = async () => {
+    setIsLoading(true);
+    try {
+        const result = await agendaService.getAgendaEvents(userId);
+        setAllEvents(result.events);
+    } catch (error) {
+        console.error('Error loading agenda events:', error);
+    } finally {
+        setIsLoading(false);
     }
-  ];
+  }
+
+  // Mock events data - now with team assignments
+
 
   // Filter events based on user's team or coach status
   const filteredEvents = (() => {
@@ -323,27 +265,27 @@ const AgendaPage = () => {
           {/* Events List */}
           {userTeam && filteredEvents.length > 0 && (
             <div className="space-y-6">
-              {filteredEvents.map((event) => {
-                const dateInfo = formatDate(event.fecha);
-                const isSoon = isEventSoon(event.fecha);
+              {filteredEvents.map((allEvents) => {
+                const dateInfo = formatDate(allEvents.fecha);
+                const isSoon = isEventSoon(allEvents.fecha);
                 
                 return (
                   <div 
-                    key={event.id} 
-                    className={`border rounded-lg p-6 hover:border-cyan-500/50 transition-all duration-300 ${getEventColor(event.tipo)}`}
+                    key={allEvents.id} 
+                    className={`border rounded-lg p-6 hover:border-cyan-500/50 transition-all duration-300 ${getEventColor(allEvents.tipo)}`}
                   >
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
                       {/* Event Info */}
                       <div className="flex-1">
                         <div className="flex items-center space-x-4 mb-3">
                           <div className="bg-gray-800 p-2 rounded-lg">
-                            {getEventIcon(event.tipo)}
+                            {getEventIcon(allEvents.tipo)}
                           </div>
                           <div>
                             <div className="flex items-center space-x-3 mb-1">
-                              <h3 className="text-xl font-bold text-white">{event.titulo}</h3>
-                              <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getBadgeColor(event.tipo)}`}>
-                                {event.tipo}
+                              <h3 className="text-xl font-bold text-white">{allEvents.titulo}</h3>
+                              <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getBadgeColor(allEvents.tipo)}`}>
+                                {allEvents.tipo}
                               </span>
                               {isSoon && (
                                 <span className="bg-orange-500/20 text-orange-400 px-2 py-1 rounded-full text-xs font-medium border border-orange-500/30 flex items-center space-x-1">
@@ -352,8 +294,8 @@ const AgendaPage = () => {
                                 </span>
                               )}
                             </div>
-                            {event.descripcion && (
-                              <p className="text-gray-400 text-sm">{event.descripcion}</p>
+                            {allEvents.descripcion && (
+                              <p className="text-gray-400 text-sm">{allEvents.descripcion}</p>
                             )}
                           </div>
                         </div>
@@ -362,7 +304,7 @@ const AgendaPage = () => {
                         <div className="flex items-center space-x-2 mb-3">
                           <span className="text-gray-400 text-sm">Equipo:</span>
                           <span className="bg-cyan-500/20 text-cyan-400 px-2 py-1 rounded text-xs font-medium border border-cyan-500/30">
-                            {event.equipoAsignado}
+                            {allEvents.equipoAsignado}
                           </span>
                         </div>
                       </div>
@@ -387,7 +329,7 @@ const AgendaPage = () => {
           )}
 
           {/* No Events for Team */}
-          {userTeam && userTeam !== 'COACH_ALL_TEAMS' && filteredEvents.length === 0 && (
+          {/*{userTeam && userTeam !== 'COACH_ALL_TEAMS' && allEvents.length === 0 && (
             <div className="text-center py-16">
               <Calendar className="w-24 h-24 text-gray-600 mx-auto mb-6" />
               <h3 className="text-2xl font-bold text-gray-400 mb-4">
@@ -416,10 +358,10 @@ const AgendaPage = () => {
                 </a>
               </div>
             </div>
-          )}
+          )}*/}
 
           {/* No Events for Coach */}
-          {userTeam === 'COACH_ALL_TEAMS' && filteredEvents.length === 0 && (
+          {allEvents.length === 0 && (
             <div className="text-center py-16">
               <Calendar className="w-24 h-24 text-gray-600 mx-auto mb-6" />
               <h3 className="text-2xl font-bold text-gray-400 mb-4">
@@ -444,12 +386,21 @@ const AgendaPage = () => {
                   <Trophy className="w-5 h-5" />
                   <span>Ver Torneos</span>
                 </Link>
+                {userRole !== 'Entrenador' && (<a
+                  href="https://discord.gg/aimleague"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-300 flex items-center justify-center space-x-2"
+                >
+                  <MessageSquare className="w-5 h-5" />
+                  <span>Únete a Discord</span>
+                </a>)}
               </div>
             </div>
           )}
 
           {/* Quick Actions */}
-          {userTeam && filteredEvents.length > 0 && (
+          {userTeam && allEvents.length > 0 && (
             <div className="mt-12 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-lg p-6">
               <h3 className="text-xl font-bold text-white mb-4 text-center">
                 ¿Necesitas más información sobre tus eventos?
@@ -465,11 +416,11 @@ const AgendaPage = () => {
                   <span>Preguntar en Discord</span>
                 </a>
                 <Link
-                  to={userRole === 'Coach' ? '/dashboard/mis-equipos' : '/dashboard/equipo'}
+                  to={'/dashboard/mis-equipos'}
                   className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-300 flex items-center justify-center space-x-2"
                 >
                   <Users className="w-5 h-5" />
-                  <span>{userRole === 'Coach' ? 'Gestionar Equipos' : 'Gestionar Equipo'}</span>
+                  <span>'Gestionar Equipos'</span>
                 </Link>
               </div>
             </div>
@@ -489,33 +440,37 @@ const AgendaPage = () => {
                     <div className="text-gray-400 text-sm">Partidas competitivas</div>
                   </div>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <div className="bg-cyan-500/20 p-2 rounded-lg border border-cyan-500/30">
-                    <Target className="w-5 h-5 text-cyan-400" />
+                {userRole !== 'Usuario' && (
+                <> {/* REVISAR <> POSIBLE ERROR */}
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-cyan-500/20 p-2 rounded-lg border border-cyan-500/30">
+                      <Target className="w-5 h-5 text-cyan-400" />
+                    </div>
+                    <div>
+                      <div className="text-white font-semibold">Academia</div>
+                      <div className="text-gray-400 text-sm">Entrenamientos técnicos</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-white font-semibold">Academia</div>
-                    <div className="text-gray-400 text-sm">Entrenamientos técnicos</div>
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-green-500/20 p-2 rounded-lg border border-green-500/30">
+                      <MessageSquare className="w-5 h-5 text-green-400" />
+                    </div>
+                    <div>
+                      <div className="text-white font-semibold">Feedback</div>
+                      <div className="text-gray-400 text-sm">Revisiones y análisis</div>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <div className="bg-green-500/20 p-2 rounded-lg border border-green-500/30">
-                    <MessageSquare className="w-5 h-5 text-green-400" />
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-purple-500/20 p-2 rounded-lg border border-purple-500/30">
+                      <Users className="w-5 h-5 text-purple-400" />
+                    </div>
+                    <div>
+                      <div className="text-white font-semibold">Entrenamiento</div>
+                      <div className="text-gray-400 text-sm">Práctica de equipo</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-white font-semibold">Feedback</div>
-                    <div className="text-gray-400 text-sm">Revisiones y análisis</div>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <div className="bg-purple-500/20 p-2 rounded-lg border border-purple-500/30">
-                    <Users className="w-5 h-5 text-purple-400" />
-                  </div>
-                  <div>
-                    <div className="text-white font-semibold">Entrenamiento</div>
-                    <div className="text-gray-400 text-sm">Práctica de equipo</div>
-                  </div>
-                </div>
+                </>
+              )}
               </div>
             </div>
           )}

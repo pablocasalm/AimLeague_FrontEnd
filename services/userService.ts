@@ -40,5 +40,9 @@ export const userService = {
       method: "GET",
     }),
 
+    getUserTeams: () => apiClient(`/User/GetUserTeams`, {  
+        method: "GET",
+        }),
+
 
 }

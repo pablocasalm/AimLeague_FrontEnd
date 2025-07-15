@@ -14,37 +14,53 @@ import {
   Target,
   MessageSquare,
   Settings,
-  GraduationCap
+  GraduationCap,
+  Sword
 } from 'lucide-react';
 import DashboardHeader from '../components/DashboardHeader';
+import { User, userService } from '../../services/userService';
+import { agendaService } from '../../services/agendaService';
+import { getEventTypeLabel } from '../utils/eventTypeMapping';
+
 
 interface EventFormData {
-  nombre: string;
-  descripcion: string;
-  fecha: string;
-  hora: string;
-  duracion: string;
-  equipos: string[];
-  tipo: 'Partido' | 'Entrenamiento' | 'Reunión' | 'Otro';
-  ubicacion: string;
-  notas: string;
+  Title: string;
+  Description: string;
+  EventDate: string;
+  EventTime: string;
+  Duration: string;
+  TeamId: number[];
+  EventType: string;
+  Location: string;
+  Additional: string;
+  
+}
+
+interface Team {
+  id: number;
+  name: string;
+}
+
+interface UserTeams {
+  teams: Team[];
+  success: boolean;
 }
 
 const CreateEventPage = () => {
   const navigate = useNavigate();
   const username = localStorage.getItem('username') || 'coach1';
-  const userRole = localStorage.getItem('userRole') || 'Coach';
+  const userRole = localStorage.getItem('role') || 'Entrenador';
 
   const [formData, setFormData] = useState<EventFormData>({
-    nombre: '',
-    descripcion: '',
-    fecha: '',
-    hora: '',
-    duracion: '',
-    equipos: [],
-    tipo: 'Entrenamiento',
-    ubicacion: '',
-    notas: ''
+    Title: '',
+    Description: '',
+    EventDate: '',
+    EventTime: '',
+    Duration: '',
+    TeamId: [],
+    EventType: '0',
+    Location: '',
+    Additional: ''
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -60,47 +76,53 @@ const CreateEventPage = () => {
     }
 
     // Only coaches should access this page
-    if (userRole !== 'Coach') {
+    if (userRole !== 'Entrenador') {
       navigate('/dashboard');
       return;
     }
+
+    getCoachTeams();
   }, [navigate, userRole]);
 
+  const [coachTeams, setCoachTeams] = useState<Team[]>([]);
+
   // Get coach's teams
-  const getCoachTeams = () => {
-    if (username === 'coach1') {
-      return [
-        { id: 'team-pro', name: 'Team Pro' },
-        { id: 'team-sigma', name: 'Team Sigma' },
-        { id: 'team-alpha', name: 'Team Alpha' }
-      ];
+  const getCoachTeams = async () => {
+    try {
+    const teams = await userService.getUserTeams() as { teams: Team[], success: boolean };
+    if (teams.success) {
+    setCoachTeams(teams.teams);
     }
-    return [];
+  } catch (error) {
+    console.error('Error fetching coach teams:', error);
+  }
   };
 
-  const coachTeams = getCoachTeams();
 
-  const handleInputChange = (field: keyof EventFormData, value: string | string[]) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
-    }
-  };
+const handleInputChange = <K extends keyof EventFormData>(
+  field: K,
+  value: EventFormData[K]
+) => {
+  setFormData(prev => ({
+    ...prev,
+    [field]: value
+  }));
+  if (errors[field]) {
+    setErrors(prev => ({ ...prev, [field]: '' }));
+  }
+};
 
-  const handleTeamSelection = (teamName: string, isChecked: boolean) => {
+
+  const handleTeamSelection = (teamid: number, isChecked: boolean) => {
     if (isChecked) {
       setFormData(prev => ({
         ...prev,
-        equipos: [...prev.equipos, teamName]
+        TeamId: [...prev.TeamId, teamid]
       }));
     } else {
       setFormData(prev => ({
         ...prev,
-        equipos: prev.equipos.filter(team => team !== teamName)
+        TeamId: prev.TeamId.filter(team => team !== teamid)
       }));
     }
   };
@@ -108,103 +130,94 @@ const CreateEventPage = () => {
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.nombre.trim()) {
-      newErrors.nombre = 'El nombre del evento es obligatorio';
+    if (!formData.Title.trim()) {
+      newErrors.title = 'El Título del evento es obligatorio';
     }
-    if (!formData.descripcion.trim()) {
-      newErrors.descripcion = 'La descripción es obligatoria';
+    if (!formData.Description.trim()) {
+      newErrors.description = 'La descripción es obligatoria';
     }
-    if (!formData.fecha) {
-      newErrors.fecha = 'La fecha es obligatoria';
+    if (!formData.EventDate) {
+      newErrors.eventDate = 'La fecha es obligatoria';
     }
-    if (!formData.hora) {
-      newErrors.hora = 'La hora es obligatoria';
+    if (!formData.EventTime) {
+      newErrors.eventTime = 'La hora es obligatoria';
     }
-    if (formData.equipos.length === 0) {
-      newErrors.equipos = 'Debes seleccionar al menos un equipo';
+    if (formData.TeamId.length === 0) {
+      newErrors.teamId = 'Debes seleccionar al menos un equipo';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  const [isLoading, setIsLoading] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-
+    setIsLoading(true);
     setIsSubmitting(true);
-
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Create event object
-      const newEvent = {
-        id: Date.now(),
-        tipo: formData.tipo,
-        titulo: formData.nombre,
-        fecha: `${formData.fecha.split('-').reverse().join('/')} ${formData.hora}`,
-        equipoAsignado: formData.equipos.join(', '),
-        descripcion: formData.descripcion,
-        ubicacion: formData.ubicacion,
-        duracion: formData.duracion,
-        notas: formData.notas,
-        createdBy: username
+    
+    try{
+      const payload = {
+        ...formData,
+        EventType: getEventTypeLabel(formData.EventType), // ← convertir aquí
       };
 
-      console.log('Event created:', newEvent);
-      
-      // Show success message
-      setShowSuccess(true);
-      
-      // Reset form
-      setFormData({
-        nombre: '',
-        descripcion: '',
-        fecha: '',
-        hora: '',
-        duracion: '',
-        equipos: [],
-        tipo: 'Entrenamiento',
-        ubicacion: '',
-        notas: ''
-      });
+      const result = await agendaService.createAgendaEvent(payload);
 
-      // Hide success message after 3 seconds
-      setTimeout(() => {
-        setShowSuccess(false);
-        navigate('/dashboard/eventos');
-      }, 3000);
-
+      if (result.success) {
+        console.log('Evento creado exitosamente:', result.data);
+      } else {
+        console.error('Error al crear el evento:', result.message);
+        alert('Error al crear el evento. Por favor, inténtalo de nuevo.');
+        return;
+      }
     } catch (error) {
-      console.error('Error creating event:', error);
-      alert('Error al crear el evento. Por favor, inténtalo de nuevo.');
+      console.error('Error al crear el evento:', error);
     } finally {
+      setIsLoading(false);
+      setShowSuccess(true);
+      setTimeout(() => {
+      setShowSuccess(false);
+      navigate('/dashboard/eventos');
+      }, 3000);
+      setFormData({
+        Title: '',
+        Description: '',
+        EventDate: '',
+        EventTime: '',
+        Duration: '',
+        TeamId: [],
+        EventType: '0',
+        Location: '',
+        Additional: ''
+      });
       setIsSubmitting(false);
     }
   };
 
-  const getEventTypeIcon = (tipo: EventFormData['tipo']) => {
-    switch (tipo) {
-      case 'Partido':
-        return <Trophy className="w-5 h-5 text-yellow-400" />;
-      case 'Entrenamiento':
-        return <Target className="w-5 h-5 text-cyan-400" />;
-      case 'Reunión':
-        return <MessageSquare className="w-5 h-5 text-green-400" />;
-      case 'Otro':
-        return <Settings className="w-5 h-5 text-gray-400" />;
-      default:
-        return <Calendar className="w-5 h-5 text-gray-400" />;
-    }
-  };
+const getEventTypeIcon = (tipo: EventFormData['EventType']) => {
+  switch (tipo) {
+    case 'Partido': // Partido
+      return <Sword className="w-5 h-5 text-red-400" />;
 
-  if (userRole !== 'Coach') {
-    return null;
+    case 'Entrenamiento': // Entrenamiento
+      return <Target className="w-5 h-5 text-cyan-400" />;
+
+    case 'Reunión': // Reunión
+      return <MessageSquare className="w-5 h-5 text-green-400" />;
+
+    case 'Torneo': // Torneo
+      return <Trophy className="w-5 h-5 text-yellow-400" />;
+
+    case 'Otro': // Otro
+      return <Settings className="w-5 h-5 text-gray-400" />;
+
+    default: // None u otro
+      return <Calendar className="w-5 h-5 text-gray-400" />;
   }
+};
+
 
   return (
     <div className="min-h-screen bg-gray-900">
@@ -225,11 +238,11 @@ const CreateEventPage = () => {
               </p>
             </div>
             <Link 
-              to="/dashboard"
+              to="/dashboard/eventos"
               className="flex items-center space-x-2 text-gray-400 hover:text-cyan-400 transition-colors duration-300"
             >
               <ArrowLeft className="w-5 h-5" />
-              <span>Volver al Dashboard</span>
+              <span>Volver a administrar eventos</span>
             </Link>
           </div>
 
@@ -268,8 +281,8 @@ const CreateEventPage = () => {
                   </label>
                   <input
                     type="text"
-                    value={formData.nombre}
-                    onChange={(e) => handleInputChange('nombre', e.target.value)}
+                    value={formData.Title}
+                    onChange={(e) => handleInputChange('Title', e.target.value)}
                     className={`w-full bg-gray-900 border rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors duration-300 ${
                       errors.nombre ? 'border-red-500' : 'border-gray-600'
                     }`}
@@ -288,8 +301,8 @@ const CreateEventPage = () => {
                     Descripción *
                   </label>
                   <textarea
-                    value={formData.descripcion}
-                    onChange={(e) => handleInputChange('descripcion', e.target.value)}
+                    value={formData.Description}
+                    onChange={(e) => handleInputChange('Description', e.target.value)}
                     rows={3}
                     className={`w-full bg-gray-900 border rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors duration-300 resize-none ${
                       errors.descripcion ? 'border-red-500' : 'border-gray-600'
@@ -310,8 +323,11 @@ const CreateEventPage = () => {
                   </label>
                   <div className="relative">
                     <select
-                      value={formData.tipo}
-                      onChange={(e) => handleInputChange('tipo', e.target.value as EventFormData['tipo'])}
+                      value={formData.EventType}
+                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                        handleInputChange('EventType', e.target.value)
+                      }
+
                       className="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors duration-300 appearance-none"
                     >
                       <option value="Entrenamiento">Entrenamiento</option>
@@ -320,19 +336,19 @@ const CreateEventPage = () => {
                       <option value="Otro">Otro</option>
                     </select>
                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                      {getEventTypeIcon(formData.tipo)}
+                      {getEventTypeIcon(formData.EventType)}
                     </div>
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-300 mb-2">
-                    Duración (Opcional)
+                    Duración en minutos (Opcional)
                   </label>
                   <input
                     type="text"
-                    value={formData.duracion}
-                    onChange={(e) => handleInputChange('duracion', e.target.value)}
+                    value={formData.Duration}
+                    onChange={(e) => handleInputChange('Duration', e.target.value)}
                     className="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors duration-300"
                     placeholder="Ej: 2 horas, 90 minutos"
                   />
@@ -354,8 +370,8 @@ const CreateEventPage = () => {
                   </label>
                   <input
                     type="date"
-                    value={formData.fecha}
-                    onChange={(e) => handleInputChange('fecha', e.target.value)}
+                    value={formData.EventDate}
+                    onChange={(e) => handleInputChange('EventDate', e.target.value)}
                     className={`w-full bg-gray-900 border rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors duration-300 ${
                       errors.fecha ? 'border-red-500' : 'border-gray-600'
                     }`}
@@ -374,8 +390,8 @@ const CreateEventPage = () => {
                   </label>
                   <input
                     type="time"
-                    value={formData.hora}
-                    onChange={(e) => handleInputChange('hora', e.target.value)}
+                    value={formData.EventTime}
+                    onChange={(e) => handleInputChange('EventTime', e.target.value)}
                     className={`w-full bg-gray-900 border rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors duration-300 ${
                       errors.hora ? 'border-red-500' : 'border-gray-600'
                     }`}
@@ -402,8 +418,8 @@ const CreateEventPage = () => {
                   <label key={team.id} className="flex items-center space-x-3 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={formData.equipos.includes(team.name)}
-                      onChange={(e) => handleTeamSelection(team.name, e.target.checked)}
+                      checked={formData.TeamId.includes(team.id)}
+                      onChange={(e) => handleTeamSelection(team.id, e.target.checked)}
                       className="w-5 h-5 text-cyan-500 bg-gray-900 border-gray-600 rounded focus:ring-cyan-500 focus:ring-2"
                     />
                     <div className="flex items-center space-x-3">
@@ -446,8 +462,8 @@ const CreateEventPage = () => {
                   </label>
                   <input
                     type="text"
-                    value={formData.ubicacion}
-                    onChange={(e) => handleInputChange('ubicacion', e.target.value)}
+                    value={formData.Location}
+                    onChange={(e) => handleInputChange('Location', e.target.value)}
                     className="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors duration-300"
                     placeholder="Ej: Discord - Sala de Entrenamiento, https://meet.google.com/..."
                   />
@@ -458,8 +474,8 @@ const CreateEventPage = () => {
                     Notas Adicionales (Opcional)
                   </label>
                   <textarea
-                    value={formData.notas}
-                    onChange={(e) => handleInputChange('notas', e.target.value)}
+                    value={formData.Additional}
+                    onChange={(e) => handleInputChange('Additional', e.target.value)}
                     rows={3}
                     className="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors duration-300 resize-none"
                     placeholder="Información adicional, preparación requerida, materiales necesarios..."

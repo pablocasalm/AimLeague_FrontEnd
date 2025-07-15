@@ -17,6 +17,7 @@ import {
   GraduationCap
 } from 'lucide-react';
 import DashboardHeader from '../components/DashboardHeader';
+import { agendaService } from '../../services/agendaService';
 
 interface EventFormData {
   nombre: string;
@@ -30,11 +31,16 @@ interface EventFormData {
   notas: string;
 }
 
+interface Team {
+  id: number;
+  name: string;
+}
+
 const EditEventPage = () => {
   const navigate = useNavigate();
   const { eventId } = useParams<{ eventId: string }>();
   const username = localStorage.getItem('username') || 'coach1';
-  const userRole = localStorage.getItem('userRole') || 'Coach';
+  const userRole = localStorage.getItem('role') || 'Entrenador';
 
   const [formData, setFormData] = useState<EventFormData>({
     nombre: '',
@@ -53,6 +59,8 @@ const EditEventPage = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [eventNotFound, setEventNotFound] = useState(false);
 
+  const [coachTeams, setCoachTeams] = useState<Team[]>([]);
+
   useEffect(() => {
     // Check if user is logged in
     const isLoggedIn = localStorage.getItem('isLoggedIn');
@@ -62,7 +70,7 @@ const EditEventPage = () => {
     }
 
     // Only coaches should access this page
-    if (userRole !== 'Coach') {
+    if (userRole !== 'Entrenador') {
       navigate('/dashboard');
       return;
     }
@@ -73,79 +81,9 @@ const EditEventPage = () => {
     }
   }, [navigate, userRole, eventId]);
 
-  // Mock function to load event data
-  const loadEventData = (id: string) => {
-    // Mock events data - in real app this would come from API
-    const mockEvents = [
-      {
-        id: 'event-001',
-        nombre: 'Entrenamiento de Estrategias - Team Pro',
-        descripcion: 'Sesión enfocada en mejorar las tácticas de equipo y coordinación en mapas competitivos.',
-        fecha: '2025-07-15',
-        hora: '20:00',
-        duracion: '2 horas',
-        tipo: 'Entrenamiento' as const,
-        equipos: ['Team Pro'],
-        ubicacion: 'Discord - Sala de Entrenamiento',
-        notas: 'Traer demos de partidas anteriores para análisis'
-      },
-      {
-        id: 'event-002',
-        nombre: 'Scrimmage vs Team External',
-        descripcion: 'Partido de práctica contra equipo externo para preparar el próximo torneo.',
-        fecha: '2025-07-18',
-        hora: '19:30',
-        duracion: '1.5 horas',
-        tipo: 'Partido' as const,
-        equipos: ['Team Sigma'],
-        ubicacion: 'Servidor privado CS2',
-        notas: 'Confirmar disponibilidad de todos los jugadores'
-      },
-      {
-        id: 'event-003',
-        nombre: 'Reunión de Feedback Semanal',
-        descripcion: 'Revisión del rendimiento de la semana y planificación de objetivos.',
-        fecha: '2025-07-20',
-        hora: '18:00',
-        duracion: '45 minutos',
-        tipo: 'Reunión' as const,
-        equipos: ['Team Pro', 'Team Alpha'],
-        ubicacion: 'Discord - Sala Principal',
-        notas: 'Preparar estadísticas de la semana'
-      }
-    ];
 
-    const event = mockEvents.find(e => e.id === id);
-    if (event) {
-      setFormData({
-        nombre: event.nombre,
-        descripcion: event.descripcion,
-        fecha: event.fecha,
-        hora: event.hora,
-        duracion: event.duracion,
-        equipos: event.equipos,
-        tipo: event.tipo,
-        ubicacion: event.ubicacion,
-        notas: event.notas
-      });
-    } else {
-      setEventNotFound(true);
-    }
-  };
 
-  // Get coach's teams
-  const getCoachTeams = () => {
-    if (username === 'coach1') {
-      return [
-        { id: 'team-pro', name: 'Team Pro' },
-        { id: 'team-sigma', name: 'Team Sigma' },
-        { id: 'team-alpha', name: 'Team Alpha' }
-      ];
-    }
-    return [];
-  };
-
-  const coachTeams = getCoachTeams();
+ 
 
   const handleInputChange = (field: keyof EventFormData, value: string | string[]) => {
     setFormData(prev => ({
@@ -190,41 +128,111 @@ const EditEventPage = () => {
     if (formData.equipos.length === 0) {
       newErrors.equipos = 'Debes seleccionar al menos un equipo';
     }
+    if (formData.duracion && isNaN(Number(formData.duracion))) {
+      newErrors.duracion = 'La duración debe ser un número (en minutos)';
+    }
+
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
+  const mapEventType = (tipo: EventFormData['tipo']): number => {
+  switch (tipo) {
+    case 'Entrenamiento': return 1;
+    case 'Partido': return 2;
+    case 'Reunión': return 3;
+    case 'Otro': return 4;
+    default: return 0;
+  }
+};
 
-    setIsSubmitting(true);
 
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      console.log('Event updated:', { id: eventId, ...formData });
-      
-      // Show success message
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  if (!validateForm()) return;
+  setIsSubmitting(true);
+
+  try {
+    const payload = {
+      EventId: parseInt(eventId ?? '0'),
+      TeamId: eventTeams
+        .filter(t => formData.equipos.includes(t.name))
+        .map(t => t.id),
+      EventType: mapEventType(formData.tipo),
+      EventDate: new Date(`${formData.fecha}T${formData.hora}`),
+      Location: formData.ubicacion,
+      Additional: formData.notas,
+      Title: formData.nombre,
+      Description: formData.descripcion,
+      Duration: parseInt(formData.duracion || '0')
+    };
+
+    const result = await agendaService.modifyAgendaEvent(payload);
+
+    if (result.success || result.message === 'Agenda event modified successfully.') {
       setShowSuccess(true);
-      
-      // Redirect after success
-      setTimeout(() => {
-        navigate('/dashboard/eventos');
-      }, 2000);
-
-    } catch (error) {
-      console.error('Error updating event:', error);
-      alert('Error al actualizar el evento. Por favor, inténtalo de nuevo.');
-    } finally {
-      setIsSubmitting(false);
+      setTimeout(() => navigate('/dashboard/eventos'), 2000);
+    } else {
+      alert('Error al actualizar el evento');
+      console.error(result);
     }
-  };
+  } catch (error) {
+    console.error('Error actualizando el evento:', error);
+    alert('Error inesperado. Intenta nuevamente.');
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
+
+const [eventTeams, setEventTeams] = useState<Team[]>([]);
+
+
+
+const loadEventData = async (id: string) => {
+  try {
+    const result = await agendaService.getEventById(id);
+
+    if (result.success) {
+      const event = result.agendaEvent;
+      const teams = event.team || [];
+
+
+      setEventTeams(teams); // <-- Usamos estos equipos en todos lados
+
+      setFormData({
+        nombre: event.title,
+        descripcion: event.description,
+        fecha: event.eventDate.split('T')[0],
+        hora: event.eventDate.split('T')[1]?.substring(0, 5) || '',
+        duracion: event.duration?.toString() || '',
+        equipos: teams.map((t: Team) => t.name), // <-- Seleccionamos los del evento
+        tipo: reverseMapEventType(event.eventType),
+        ubicacion: event.location,
+        notas: event.additional
+      });
+    } else {
+      console.error(result.message);
+      setEventNotFound(true);
+    }
+  } catch (error) {
+    console.error("Error cargando el evento:", error);
+    setEventNotFound(true);
+  }
+};
+
+
+    const reverseMapEventType = (value: number): EventFormData['tipo'] => {
+      switch (value) {
+        case 1: return 'Entrenamiento';
+        case 2: return 'Partido';
+        case 3: return 'Reunión';
+        case 4: return 'Otro';
+        default: return 'Otro';
+      }
+    };
 
   const getEventTypeIcon = (tipo: EventFormData['tipo']) => {
     switch (tipo) {
@@ -241,7 +249,7 @@ const EditEventPage = () => {
     }
   };
 
-  if (userRole !== 'Coach') {
+  if (userRole !== 'Entrenador') {
     return null;
   }
 
@@ -460,7 +468,7 @@ const EditEventPage = () => {
               </div>
               
               <div className="space-y-4">
-                {coachTeams.map((team) => (
+                {eventTeams.map((team) => (
                   <label key={team.id} className="flex items-center space-x-3 cursor-pointer">
                     <input
                       type="checkbox"
