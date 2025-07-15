@@ -79,21 +79,12 @@ const DashboardPage = () => {
 
   // Determine team card configuration based on role
   const getTeamCardConfig = () => {
-    if (userRole === 'Entrenador') {
       return {
         title: 'Mis Equipos',
         description: 'Gestiona todos los equipos bajo tu supervisión.',
         link: '/dashboard/mis-equipos',
         icon: Shield
       };
-    } else {
-      return {
-        title: 'Mi Equipo',
-        description: 'Gestiona tu equipo, revisa miembros y coordina estrategias.',
-        link: `/dashboard/equipo/${localStorage.getItem('teamid')}`,
-        icon: Shield
-      };
-    }
   };
 
   const teamCardConfig = getTeamCardConfig();

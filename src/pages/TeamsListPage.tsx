@@ -143,9 +143,6 @@ const handleCreateTeam = async (e: React.FormEvent) => {
     return `${day}/${month} - ${time}`;
   };
 
-  if (userRole !== 'Entrenador') {
-    return null;
-  }
 
   return (
     <div className="min-h-screen bg-gray-900">
@@ -240,6 +237,7 @@ const handleCreateTeam = async (e: React.FormEvent) => {
                 </div>
 
                 {/* Selección de rol */}
+                {userRole === 'Entrenador' && (
                 <div>
                   <label className="block text-sm font-semibold text-gray-300 mb-2">
                     Rol inicial *
@@ -268,7 +266,7 @@ const handleCreateTeam = async (e: React.FormEvent) => {
                       <span>Entrenador</span>
                     </label>
                   </div>
-                </div>
+                </div>)}
 
                 {/* Información contextual (opcional) */}
                 <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-4">
