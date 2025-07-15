@@ -15,7 +15,8 @@ import {
   Plus,
   Upload,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  UsersIcon
 } from 'lucide-react';
 import DashboardHeader from '../components/DashboardHeader';
 import { teamService } from '../../services/teamService';
@@ -34,18 +35,20 @@ interface TeamSummary {
 interface TeamData {
   teams: TeamSummary[];
   success: boolean;
+  playersCount: number;
 }
 
 const TeamsListPage = () => {
   const navigate = useNavigate();
   const username = localStorage.getItem('username') || 'Entrenador1';
-  const userRole = localStorage.getItem('userRole') || 'Entrenador';
+  const userRole = localStorage.getItem('role') || 'Entrenador';
   
   const [isCreatingTeam, setIsCreatingTeam] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
   const [teamLogo, setTeamLogo] = useState('');
   const [teams, setTeams] = useState<TeamSummary[]>([]);
-  const [newTeamRole, setNewTeamRole] = useState<number>(2); // 1 = Capitán, 2 = Entrenador
+  const [playersCount, setPlayersCount] = useState(0);
+  const [newTeamRole, setNewTeamRole] = useState<number>(2); // 1 = Capitán, 2 = Entrenador, 0 = None
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,11 +61,6 @@ const TeamsListPage = () => {
       return;
     }
 
-    // Only Entrenadores should access this page
-    if (userRole !== 'Entrenador') {
-      navigate('/dashboard');
-      return;
-    }
     
     // Initialize teams data
     loadTeamsInfo();
@@ -79,7 +77,7 @@ const handleCreateTeam = async (e: React.FormEvent) => {
     // Llamada al endpoint con la nueva estructura:
     const result = await teamService.createTeam({
       TeamName: newTeamName.trim(),
-      TeamRole: newTeamRole,
+      TeamRole: userRole == 'Entrenador' ? newTeamRole : 1, // Si es Entrenador, usa el rol seleccionado, si no, siempre Capitán
       ImageUrl: teamLogo.trim(),
     }) as { teamId: number; message: string; success: boolean };
 
@@ -118,6 +116,7 @@ const handleCreateTeam = async (e: React.FormEvent) => {
       // Llamas al endpoint
       const data = await teamService.getAllTeams(userId) as TeamData;
       setTeams(data.teams);
+      setPlayersCount(data.playersCount);
     } catch (e: any) {
       console.error('Error cargando equipos:', e);
       setError(e.message || 'Error al cargar tus equipos');
@@ -159,7 +158,7 @@ const handleCreateTeam = async (e: React.FormEvent) => {
                 <h1 className="text-3xl font-bold text-white">Mis Equipos</h1>
               </div>
               <p className="text-gray-400 text-lg">
-                Gestiona todos los equipos bajo tu supervisión
+                Aqui se verán todos los equipos de los que formas parte.
               </p>
             </div>
             <Link 
@@ -172,15 +171,26 @@ const handleCreateTeam = async (e: React.FormEvent) => {
           </div>
 
           {/* Entrenador Info */}
-          <div className="bg-gradient-to-r from-purple-500/10 to-cyan-500/10 border border-purple-500/20 rounded-lg p-6 mb-8">
+          {userRole === 'Entrenador' ? (
+            <div className="bg-gradient-to-r from-purple-500/10 to-cyan-500/10 border border-purple-500/20 rounded-lg p-6 mb-8">
             <div className="flex items-center space-x-3 mb-4">
               <GraduationCap className="w-6 h-6 text-purple-400" />
               <h2 className="text-xl font-bold text-white">Panel de Entrenador</h2>
             </div>
             <p className="text-gray-300">
-              Desde aquí puedes gestionar todos los equipos en los que eres entrenador.
+              Consulta y gestiona los equipos a los que perteneces. Puedes ver tus compañeros y modificar la información de tu equipo si eres entrenador o capitán.
+            </p>
+          </div>) : (
+          <div className="bg-gradient-to-r from-cyan-500/10 to-gray-700/10 border border-cyan-500/20 rounded-lg p-6 mb-8">
+            <div className="flex items-center space-x-3 mb-4">
+              <UsersIcon className="w-6 h-6 text-cyan-400" />
+              <h2 className="text-xl font-bold text-white">Panel de Usuario</h2>
+            </div>
+            <p className="text-gray-300">
+              Consulta y gestiona los equipos a los que perteneces. Puedes ver tus compañeros y modificar la información de tu equipo si eres capitán.
             </p>
           </div>
+          )}
 
           {/* Create Team Button */}
           <div className="mb-8">
@@ -269,6 +279,7 @@ const handleCreateTeam = async (e: React.FormEvent) => {
                 </div>)}
 
                 {/* Información contextual (opcional) */}
+                {userRole === 'Entrenador' ? (
                 <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-4">
                   <div className="flex items-start space-x-3">
                     <GraduationCap className="w-5 h-5 text-purple-400 mt-0.5" />
@@ -295,7 +306,21 @@ const handleCreateTeam = async (e: React.FormEvent) => {
                       </ul>
                     </div>
                   </div>
-                </div>
+                </div>) : (
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                    <div className="flex items-start space-x-3">
+                      <AlertCircle className="w-5 h-5 text-blue-400 mt-0.5" />
+                      <div>
+                        <p className="text-blue-400 font-semibold mb-2">Información importante:</p>
+                        <ul className="text-blue-300 text-sm space-y-1">
+                          <li>• Serás automáticamente el capitán del equipo</li>
+                          <li>• Podrás invitar hasta 4 jugadores más</li>
+                          <li>• El nombre del equipo no se puede cambiar después</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Botones */}
                 <div className="flex space-x-4">
@@ -368,11 +393,14 @@ const handleCreateTeam = async (e: React.FormEvent) => {
                       <div className="text-2xl font-bold text-cyan-400">{team.wins}</div>
                       <div className="text-gray-400 text-sm">Victorias</div>
                     </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-cyan-400">{team.matchesPlayed}</div>
+                      <div className="text-gray-400 text-sm">Partidos</div>
+                    </div>
                   </div>
 
-                  {/* Next Event */}
-                  {/*{team.proximoEvento && (
-                    <div className="bg-gray-900 border border-gray-600 rounded-lg p-4">
+                 {/* Next Event */}
+                   {/*  <div className="bg-gray-900 border border-gray-600 rounded-lg p-4">
                       <div className="flex items-center space-x-3">
                         {getEventIcon(team.proximoEvento.tipo)}
                         <div>
@@ -380,8 +408,7 @@ const handleCreateTeam = async (e: React.FormEvent) => {
                           <p className="text-gray-400 text-xs">{formatDate(team.proximoEvento.fecha)}</p>
                         </div>
                       </div>
-                    </div>
-                  )}*/}
+                    </div>*/}
                 </Link>
               ))}
             </div>
@@ -391,9 +418,9 @@ const handleCreateTeam = async (e: React.FormEvent) => {
               <h3 className="text-2xl font-bold text-gray-400 mb-4">
                 No tienes equipos asignados
               </h3>
-              <p className="text-gray-500 mb-8 max-w-md mx-auto">
+            {/*<p className="text-gray-500 mb-8 max-w-md mx-auto">
                 Contacta con la administración para que te asignen equipos para entrenar.
-              </p>
+              </p>*/}
             </div>
           )}
 
@@ -410,29 +437,30 @@ const handleCreateTeam = async (e: React.FormEvent) => {
                 <div className="bg-gray-900 border border-gray-600 rounded-lg p-6 text-center hover:border-cyan-500/50 transition-colors duration-300">
                   <Users className="w-12 h-12 text-cyan-400 mx-auto mb-4" />
                   <div className="text-3xl font-bold text-cyan-400 mb-2">
-                    {teams.reduce((total, team) => total + team.memberCount, 0)}
+                    {playersCount}
                   </div>
-                  <div className="text-gray-300 font-semibold">Jugadores</div>
+                  <div className="text-gray-300 font-semibold">Jugadores Únicos</div>
                 </div>
                 <div className="bg-gray-900 border border-gray-600 rounded-lg p-6 text-center hover:border-cyan-500/50 transition-colors duration-300">
                   <Trophy className="w-12 h-12 text-cyan-400 mx-auto mb-4" />
                   <div className="text-3xl font-bold text-cyan-400 mb-2">
                     {teams.reduce((total, team) => total + team.tournamentsPlayed, 0)}
                   </div>
-                  <div className="text-gray-300 font-semibold">Torneos</div>
+                  <div className="text-gray-300 font-semibold">Torneos Totales</div>
                 </div>
                 <div className="bg-gray-900 border border-gray-600 rounded-lg p-6 text-center hover:border-cyan-500/50 transition-colors duration-300">
                   <Award className="w-12 h-12 text-cyan-400 mx-auto mb-4" />
                   <div className="text-3xl font-bold text-cyan-400 mb-2">
                     {teams.reduce((total, team) => total + team.wins, 0)}
                   </div>
-                  <div className="text-gray-300 font-semibold">Victorias</div>
+                  <div className="text-gray-300 font-semibold">Victorias Totales</div>
                 </div>
               </div>
             </div>
           )}
 
           {/* Quick Actions */}
+          {userRole === 'Entrenador' ? (
           <div className="mt-8 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-lg p-6">
             <h3 className="text-xl font-bold text-white mb-4 text-center">
               Herramientas de Entrenador
@@ -454,6 +482,29 @@ const handleCreateTeam = async (e: React.FormEvent) => {
               </Link>
             </div>
           </div>
+          ) : (
+          <div className="mt-8 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-lg p-6">
+            <h3 className="text-xl font-bold text-white mb-4 text-center">
+              Herramientas de Usuario
+            </h3>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                to="/dashboard/agenda"
+                className="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-300 flex items-center justify-center space-x-2"
+              >
+                <Calendar className="w-5 h-5" />
+                <span>Ver Agenda Completa</span>
+              </Link>
+              <Link
+                to="/tournaments"
+                className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-300 flex items-center justify-center space-x-2"
+              >
+                <Trophy className="w-5 h-5" />
+                <span>Inscribir en Torneos</span>
+              </Link>
+            </div>
+          </div>
+          )}
         </div>
       </div>
     </div>
@@ -461,3 +512,5 @@ const handleCreateTeam = async (e: React.FormEvent) => {
 };
 
 export default TeamsListPage;
+
+

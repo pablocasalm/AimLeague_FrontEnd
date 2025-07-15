@@ -13,11 +13,40 @@ export interface Notification {
   createdAt: string;
 }
 
+function getTimeAgo(isoDateString: string): string {
+  const createdAt = new Date(isoDateString);
+  const now = new Date();
+  const diff = (now.getTime() - createdAt.getTime()) / 1000; // en segundos
+
+  if (diff < 60) return 'hace unos segundos';
+
+  const minutes = Math.floor(diff / 60);
+  if (minutes < 60) return `hace ${minutes} minuto${minutes === 1 ? '' : 's'}`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `hace ${hours} hora${hours === 1 ? '' : 's'}`;
+
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `hace ${days} día${days === 1 ? '' : 's'}`;
+
+  const weeks = Math.floor(days / 7);
+  if (weeks < 4) return `hace ${weeks} semana${weeks === 1 ? '' : 's'}`;
+
+  const months = Math.floor(days / 30);
+  if (months < 12) return `hace ${months} mes${months === 1 ? '' : 'es'}`;
+
+  const years = Math.floor(days / 365);
+  return `hace ${years} año${years === 1 ? '' : 's'}`;
+}
+
+
 const NotificationButton: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [notes, setNotes] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [tick, setTick] = useState(0);
+
 
   const toggle = () => {
     setOpen(v => !v);
@@ -42,6 +71,15 @@ const NotificationButton: React.FC = () => {
       setLoading(false);
     }
   };
+
+  React.useEffect(() => {
+  const interval = setInterval(() => {
+    setTick((prev) => prev + 1);
+  }, 60000); // cada 60 segundos
+
+  return () => clearInterval(interval); // cleanup al desmontar
+}, []);
+
 
   const onAccept = async (id: number) => {
     await teamService.acceptInvitation(id);
@@ -98,6 +136,9 @@ const NotificationButton: React.FC = () => {
               <div className="ml-6 flex-1">
                 <p className="text-white font-semibold">{n.title}</p>
                 <p className="text-gray-400 text-sm">{n.description}</p>
+                <p className="text-gray-500 text-xs mt-1">
+                  {getTimeAgo(n.createdAt)}
+                </p>
               </div>
 
               {/* Botones de acción */}

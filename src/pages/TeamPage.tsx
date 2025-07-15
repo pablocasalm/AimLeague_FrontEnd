@@ -314,17 +314,11 @@ const TeamPage = () => {
 
   // Determine back link based on user role and context
   const getBackLink = () => {
-    if (userRole === 'Entrenador' && teamId) {
       return '/dashboard/mis-equipos';
-    }
-    return '/dashboard';
   };
 
   const getBackText = () => {
-    if (userRole === 'Entrenador' && teamId) {
       return 'Volver a Mis Equipos';
-    }
-    return 'Volver al Dashboard';
   };
 
   if (!hasTeamAccess) {
