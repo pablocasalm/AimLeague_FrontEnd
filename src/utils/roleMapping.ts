@@ -16,6 +16,14 @@ export const roleLabels: Record<UserRole, string> = {
   Admin:   'Administrador',
 };
 
+export const rightToNumber: Record<string, number> = {
+  'Básico': 0,
+  'Usuario': 1,
+  'Jugador': 2,
+  'Entrenador': 4,
+  'Administrador': 8
+}
+
 /**
  * Función de ayuda para obtener la etiqueta a partir del valor crudo.
  * Si recibe algo que no conoce, devuelve el valor tal cual.
@@ -25,4 +33,11 @@ export function getRoleLabel(role: string): string {
     return roleLabels[role as UserRole];
   }
   return role;
+}
+
+export function getRoleNumber(right: string): number {
+  if (right in rightToNumber){
+    return rightToNumber[right as string];
+  }
+  return parseInt(right); 
 }

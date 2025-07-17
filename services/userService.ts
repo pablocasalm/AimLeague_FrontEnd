@@ -10,6 +10,13 @@ export interface User {
     photoUrl?: string;
   }
 
+  export interface UserRole {
+    id: number; 
+    username: string;
+    firstName: string; 
+    right: string;
+  }
+
 export const userService = {
 
     register: (registerData: {
@@ -44,5 +51,13 @@ export const userService = {
         method: "GET",
         }),
 
+    updateUserRole: (userId: number, newRole: number) => apiClient(`/User/updateUserRole`, {
+        method: 'POST',
+        body: JSON.stringify({ userId, newRole })
+    }),
+
+    searchUsersWithRole: (query: string): Promise<UserRole[]> => apiClient(`/User/searchUsersWithRole?query=${encodeURIComponent(query)}`, {
+        method: 'GET',
+    })
 
 }

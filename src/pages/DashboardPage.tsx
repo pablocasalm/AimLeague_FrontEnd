@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Trophy, 
@@ -20,10 +20,12 @@ import DashboardHeader from '../components/DashboardHeader';
 import { getNumber } from '../utils/storageNumber';
 import { getRoleLabel } from '../utils/roleMapping';
 
+
 const DashboardPage = () => {
   const navigate = useNavigate();
   const username = localStorage.getItem('username') || 'user1';
   const userRole = localStorage.getItem('role') || 'Usuario';
+  const [isRoleModalOpen, setRoleModalOpen] = useState(false);
 
   
 
@@ -119,6 +121,46 @@ const DashboardPage = () => {
 
           {/* Quick Actions Grid */}
           <div className={`grid grid-cols-1 md:grid-cols-2 ${shouldShowTeamSection ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-6 mb-8`}>
+
+            {/* Administrar Torneos (solo Admin) */}
+            {userRole === 'Administrador' && (
+              <Link
+                to="/dashboard/admin/torneos"
+                className="bg-gray-800 border border-gray-700 rounded-lg p-6 hover:border-cyan-500/50 transition-all duration-300 hover:transform hover:scale-105 group"
+              >
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="bg-purple-500/20 p-3 rounded-lg group-hover:bg-purple-500/30 transition-colors duration-300">
+                    <Trophy className="w-6 h-6 text-purple-400 group-hover:text-purple-300" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white group-hover:text-purple-400 transition-colors duration-300">
+                    Administrar Torneos
+                  </h3>
+                </div>
+                <p className="text-gray-400">
+                  Crea, edita y elimina torneos de la plataforma.
+                </p>
+              </Link>
+            )}
+
+            {/* Asignar Roles (solo Admin) */}
+            {userRole === 'Administrador' && (
+              <Link
+                to="/dashboard/admin/roles"
+                className="bg-gray-800 border border-gray-700 rounded-lg p-6 hover:border-yellow-500/50 transition-all duration-300 hover:transform hover:scale-105 group"
+              >
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="bg-yellow-500/20 p-3 rounded-lg group-hover:bg-yellow-500/30 transition-colors duration-300">
+                    <Users className="w-6 h-6 text-yellow-400 group-hover:text-yellow-300" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white group-hover:text-yellow-400 transition-colors duration-300">
+                    Asignar Roles
+                  </h3>
+                </div>
+                <p className="text-gray-400">
+                  Gestiona los roles y permisos de las cuentas de usuario.
+                </p>
+              </Link>
+            )}
             <Link 
               to="/dashboard/torneos-disponibles"
               className="bg-gray-800 border border-gray-700 rounded-lg p-6 hover:border-cyan-500/50 transition-all duration-300 hover:transform hover:scale-105 group"

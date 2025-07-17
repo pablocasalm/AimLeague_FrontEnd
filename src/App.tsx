@@ -23,6 +23,8 @@ import EditEventPage from './pages/EditEventPage';
 import RegisterPage from './pages/RegisterPage';
 import Header from './components/Header';
 import { useLocation } from 'react-router-dom';
+import AdminRolesPage from './pages/AdminRolesPage';
+import AdminTournamentsPage from './pages/AdminTournamentsPage';
 
 const HomePage = () => {
   return (
@@ -64,6 +66,8 @@ const AppContent = () => {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/dashboard/agenda" element={<AgendaPage />} />
         {/*<Route path="/dashboard/equipo" element={<TeamPage />} />*/}
+        <Route path='/dashboard/admin/roles' element={<AdminRolesPage/>}/>
+        <Route path='/dashboard/admin/torneos' element={<AdminTournamentsPage/>}/>
         <Route path="/dashboard/mis-equipos" element={<TeamsListPage />} />
         <Route path="/dashboard/equipo/:teamId" element={<TeamPage />} />
         <Route path="/dashboard/torneos-disponibles" element={<AvailableTournamentsPage />} />
