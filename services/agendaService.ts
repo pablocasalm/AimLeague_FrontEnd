@@ -1,7 +1,7 @@
 import { apiClient } from './apiClient';
 
 export const agendaService = {
-    getAgendaEvents: (userId?: number) => apiClient('/Agenda/GetAgendaEvents',{
+    getAgendaEvents: () => apiClient('/Agenda/GetAgendaEvents',{
         method: 'GET',
     }),
 
@@ -9,9 +9,9 @@ export const agendaService = {
         method: 'DELETE',
     }),
 
-    modifyAgendaEvent: (eventData: any) => apiClient('/Agenda/ModifyAgendaEvent', {
+    modifyAgendaEvent: (payload: any) => apiClient('/Agenda/ModifyAgendaEvent', {
         method: 'POST',
-        body: JSON.stringify(eventData),
+        body: JSON.stringify(payload),
     }),
 
     createAgendaEvent: (eventData: any) => apiClient('/Agenda/CreateAgendaEvent', {

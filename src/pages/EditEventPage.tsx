@@ -34,6 +34,7 @@ interface EventFormData {
 interface Team {
   id: number;
   name: string;
+  isAssigned: boolean;
 }
 
 const EditEventPage = () => {
@@ -161,7 +162,7 @@ const handleSubmit = async (e: React.FormEvent) => {
         .filter(t => formData.equipos.includes(t.name))
         .map(t => t.id),
       EventType: mapEventType(formData.tipo),
-      EventDate: new Date(`${formData.fecha}T${formData.hora}`),
+      EventDate: `${formData.fecha}T${formData.hora}`,
       Location: formData.ubicacion,
       Additional: formData.notas,
       Title: formData.nombre,
@@ -191,37 +192,67 @@ const [eventTeams, setEventTeams] = useState<Team[]>([]);
 
 
 
-const loadEventData = async (id: string) => {
+const loadEventData = async (id: string): Promise<void> => {
   try {
-    const result = await agendaService.getEventById(id);
+    // 1) Llamada al backend (agendaService debe hacer `return response.data`)
+    const response = await agendaService.getEventById(id) as {
+      message: string;
+      success: boolean;
+      agendaEvent?: {
+        id: number;
+        title: string;
+        description: string;
+        eventDate: string;
+        duration: number;
+        location: string;
+        additional: string;
+        eventType: number;
+        teams: Team[];
+      };
+    };
 
-    if (result.success) {
-      const event = result.agendaEvent;
-      const teams = event.team || [];
-
-
-      setEventTeams(teams); // <-- Usamos estos equipos en todos lados
-
-      setFormData({
-        nombre: event.title,
-        descripcion: event.description,
-        fecha: event.eventDate.split('T')[0],
-        hora: event.eventDate.split('T')[1]?.substring(0, 5) || '',
-        duracion: event.duration?.toString() || '',
-        equipos: teams.map((t: Team) => t.name), // <-- Seleccionamos los del evento
-        tipo: reverseMapEventType(event.eventType),
-        ubicacion: event.location,
-        notas: event.additional
-      });
-    } else {
-      console.error(result.message);
+    // 2) Si falla, marcamos “no encontrado”
+    if (!response.success) {
+      console.error(response.message);
       setEventNotFound(true);
+      return;
     }
+
+    // 3) Extraemos el evento
+    const event = response.agendaEvent;
+    if (!event) {
+      console.error("No viene agendaEvent en la respuesta:", response);
+      setEventNotFound(true);
+      return;
+    }
+
+    // 4) Todos los equipos del usuario, con isAssigned
+    const teams: Team[] = event.teams ?? [];
+
+    // 5) Guardamos los equipos para renderizar los checkboxes
+    setEventTeams(teams);
+
+    // 6) Inicializamos el formulario, marcando sólo los asignados
+    setFormData({
+      nombre:      event.title,
+      descripcion: event.description,
+      fecha:       event.eventDate.split("T")[0],
+      hora:        event.eventDate.split("T")[1]?.substring(0, 5) ?? "",
+      duracion:    event.duration.toString(),
+      equipos:     teams
+                      .filter(t => t.isAssigned)  // sólo los que ya estaban
+                      .map(t => t.name),
+      tipo:        reverseMapEventType(event.eventType),
+      ubicacion:   event.location,
+      notas:       event.additional
+    });
   } catch (error) {
     console.error("Error cargando el evento:", error);
     setEventNotFound(true);
   }
 };
+
+
 
 
     const reverseMapEventType = (value: number): EventFormData['tipo'] => {
