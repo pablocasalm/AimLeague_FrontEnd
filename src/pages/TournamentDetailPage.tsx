@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   Trophy, 
@@ -13,118 +13,104 @@ import {
   XCircle,
   AlertCircle
 } from 'lucide-react';
+import { tournamentService } from '../../services/tournamentService';
 
 interface Match {
   equipoA: string;
   equipoB: string;
-  resultado: string;
-  fecha?: string;
-  hora?: string;
+  result: string;
+  fecha?: string;  // "YYYY-MM-DD"
+  hora?: string;   // "HH:mm"
 }
 
 interface TournamentData {
   id: string;
-  nombre: string;
-  estado: 'Activo' | 'Finalizado' | 'Próximamente';
-  fecha: string;
-  descripcion: string;
-  modalidad: string;
-  premio: string;
-  discord: string;
-  equiposParticipantes: number;
-  enfrentamientos: Match[];
-  reglas?: string[];
+  name: string;
+  estado?: 'Activo' | 'Finalizado' | 'Próximamente';
+  startDate: string;      // "YYYY-MM-DDTHH:mm:ssZ" u otro ISO
+  endDate: string;      // ISO
+  description: string;
+  prize: string;
+  participants: number;
+  clashes: Match[];
   organizador?: string;
+}
+
+interface ApiResponse {
+  tournament?: TournamentData;
+  matches?: Match[];
+  success: boolean;
 }
 
 const TournamentDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  // Mock data - in a real app, this would be fetched based on the ID
-  const getTournamentData = (tournamentId: string): TournamentData | null => {
-    const tournaments: Record<string, TournamentData> = {
-      'torneo-julio-2025': {
-        id: 'torneo-julio-2025',
-        nombre: 'Torneo Julio 2025',
-        estado: 'Próximamente',
-        fecha: '25 de julio de 2025',
-        descripcion: 'Competencia abierta de CS2 para jugadores amateurs. Este torneo promete ser uno de los más emocionantes del año con equipos de toda Latinoamérica.',
-        modalidad: 'Eliminación directa',
-        premio: 'Premios en efectivo + medallas digitales',
-        discord: 'https://discord.gg/aimleague',
-        equiposParticipantes: 32,
-        enfrentamientos: [
-          { equipoA: 'Team Alpha', equipoB: 'Team Bravo', resultado: 'Por jugar', fecha: '25 Jul', hora: '18:00' },
-          { equipoA: 'Team Charlie', equipoB: 'Team Delta', resultado: 'Por jugar', fecha: '25 Jul', hora: '19:00' },
-          { equipoA: 'Fire Storm', equipoB: 'Ice Breakers', resultado: 'Por jugar', fecha: '25 Jul', hora: '20:00' },
-          { equipoA: 'Shadow Hunters', equipoB: 'Thunder Bolts', resultado: 'Por jugar', fecha: '25 Jul', hora: '21:00' }
-        ],
-        reglas: [
-          'Formato: Best of 3 (BO3) en todas las rondas',
-          'Mapas: Mirage, Inferno, Dust2, Cache, Overpass',
-          'Cada equipo debe tener 5 jugadores titulares + 1 suplente',
-          'Prohibido el uso de software externo o modificaciones',
-          'Tiempo límite: 15 minutos de retraso máximo'
-        ],
-        organizador: 'Aim League Staff'
-      },
-      'cs2-clash-julio': {
-        id: 'cs2-clash-julio',
-        nombre: 'CS2 Clash - Julio',
-        estado: 'Activo',
-        fecha: '20 de julio de 2025',
-        descripcion: 'Competencia mensual abierta a nuevos equipos. Actualmente en fase de grupos.',
-        modalidad: 'Liga Regular',
-        premio: '$500 USD',
-        discord: 'https://discord.gg/aimleague',
-        equiposParticipantes: 24,
-        enfrentamientos: [
-          { equipoA: 'Elite Squad', equipoB: 'Pro Gamers', resultado: '16-12', fecha: '20 Jul', hora: 'Finalizado' },
-          { equipoA: 'Night Wolves', equipoB: 'Cyber Ghosts', resultado: '14-16', fecha: '20 Jul', hora: 'Finalizado' },
-          { equipoA: 'Storm Riders', equipoB: 'Phantom Strike', resultado: 'En curso', fecha: '20 Jul', hora: '19:30' },
-          { equipoA: 'Blaze Fury', equipoB: 'Thunder Team', resultado: 'Por jugar', fecha: '21 Jul', hora: '18:00' }
-        ],
-        reglas: [
-          'Formato: Best of 1 (BO1) en fase de grupos',
-          'Playoffs: Best of 3 (BO3)',
-          'Sistema de puntos: 3 pts victoria, 1 pt empate, 0 pts derrota',
-          'Clasifican los 8 mejores equipos a playoffs'
-        ],
-        organizador: 'Aim League Staff'
-      },
-      'academy-cup-agosto': {
-        id: 'academy-cup-agosto',
-        nombre: 'Academy Cup Agosto',
-        estado: 'Finalizado',
-        fecha: '10 de agosto de 2025',
-        descripcion: 'Torneo exclusivo para miembros de la Academy. ¡Felicitaciones a todos los participantes!',
-        modalidad: 'Doble Eliminación',
-        premio: '$200 USD',
-        discord: 'https://discord.gg/aimleague',
-        equiposParticipantes: 12,
-        enfrentamientos: [
-          { equipoA: 'Academy Stars', equipoB: 'Rising Phoenix', resultado: '16-8', fecha: '10 Ago', hora: 'Final' },
-          { equipoA: 'Future Legends', equipoB: 'Dream Team', resultado: '16-14', fecha: '10 Ago', hora: 'Semifinal' },
-          { equipoA: 'New Generation', equipoB: 'Young Guns', resultado: '12-16', fecha: '10 Ago', hora: 'Semifinal' },
-          { equipoA: 'Academy Stars', equipoB: 'Future Legends', resultado: '16-10', fecha: '10 Ago', hora: 'Final' }
-        ],
-        reglas: [
-          'Solo para miembros de Aim League Academy',
-          'Formato: Best of 3 (BO3) en todas las rondas',
-          'Doble eliminación: segunda oportunidad para todos',
-          'Mapas seleccionados por los capitanes'
-        ],
-        organizador: 'Academy Staff'
-      }
-    };
+  const discord = 'https://discord.gg/aimleague';
 
-    return tournaments[tournamentId] || null;
-  };
+  const organizador = 'Aim League';
 
-  const tournament = getTournamentData(id || '');
+  const [isLoading, setIsLoading] = useState(false);
+  const [tournamentData, setTournamentData] = useState<TournamentData>({
+    id:           '',
+    name:         '',
+    startDate:    '',
+    endDate:      '',
+    description:  '',
+    prize:        '',
+    participants: 0,
+    clashes:      [],
+    organizador:  ''
+  });
+  const [matchesData, setMatchesData] = useState<Match[]>([]);
 
-  if (!tournament) {
+  useEffect(() => {
+    if (!id) return;
+    loadTournamentData(id);
+  }, [id]);
+
+const loadTournamentData = async (tournamentId: string) => {
+  setIsLoading(true);
+  try {
+    const resp = await tournamentService.getTournamentById(tournamentId) as ApiResponse;
+    if (resp.success && resp.tournament) {
+      const tour = resp.tournament;
+
+      const estado = computeEstado(tour.startDate, tour.endDate);
+
+      setTournamentData({ ...tour, estado });
+      setMatchesData(resp.matches ?? []);
+    } else {
+      setTournamentData(prev => ({ ...prev, estado: 'Próximamente' }));
+      setMatchesData([]);
+    }
+  } catch (error) {
+    console.error('Error cargando torneo:', error);
+    setTournamentData(prev => ({ ...prev, estado: 'Próximamente' }));
+    setMatchesData([]);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+const computeEstado = (
+  startDateIso: string,
+  endDateIso:   string
+): TournamentData['estado'] => {
+  const now   = new Date();
+  const start = new Date(startDateIso);
+  const end   = new Date(endDateIso);
+
+  if (now < start) {
+    return 'Próximamente';
+  } else if (now >= start && now <= end) {
+    return 'Activo';
+  } else {
+    return 'Finalizado';
+  }
+};
+
+    if (!tournamentData) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
@@ -176,7 +162,7 @@ const TournamentDetailPage = () => {
   };
 
   const handleRegisterClick = () => {
-    navigate(`/register/${tournament.id}`);
+    navigate(`/register/${tournamentData.id}`);
   };
 
   return (
@@ -209,15 +195,15 @@ const TournamentDetailPage = () => {
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-8 mb-8">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
               <div>
-                <h2 className="text-3xl font-bold text-white mb-4">{tournament.nombre}</h2>
+                <h2 className="text-3xl font-bold text-white mb-4">{tournamentData.name}</h2>
                 <p className="text-gray-300 text-lg leading-relaxed max-w-3xl">
-                  {tournament.descripcion}
+                  {tournamentData.description}
                 </p>
               </div>
               <div className="mt-4 lg:mt-0">
-                <span className={`px-4 py-2 rounded-full text-lg font-medium border flex items-center space-x-2 ${getStatusColor(tournament.estado)}`}>
-                  {getStatusIcon(tournament.estado)}
-                  <span>{tournament.estado}</span>
+                <span className={`px-4 py-2 rounded-full text-lg font-medium border flex items-center space-x-2 ${getStatusColor(tournamentData.estado)}`}>
+                  {getStatusIcon(tournamentData.estado)}
+                  <span>{tournamentData.estado}</span>
                 </span>
               </div>
             </div>
@@ -228,28 +214,28 @@ const TournamentDetailPage = () => {
                 <Calendar className="w-6 h-6 text-cyan-400" />
                 <div>
                   <p className="text-gray-400 text-sm">Fecha</p>
-                  <p className="text-white font-semibold">{tournament.fecha}</p>
+                  <p className="text-white font-semibold">{tournamentData.startDate}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-3">
                 <Users className="w-6 h-6 text-cyan-400" />
                 <div>
                   <p className="text-gray-400 text-sm">Equipos</p>
-                  <p className="text-white font-semibold">{tournament.equiposParticipantes} equipos</p>
+                  <p className="text-white font-semibold">{tournamentData.participants} equipos</p>
                 </div>
               </div>
-              <div className="flex items-center space-x-3">
+              {/*<div className="flex items-center space-x-3">
                 <MapPin className="w-6 h-6 text-cyan-400" />
                 <div>
                   <p className="text-gray-400 text-sm">Modalidad</p>
-                  <p className="text-white font-semibold">{tournament.modalidad}</p>
+                  <p className="text-white font-semibold">{tournamentData.modalidad}</p>
                 </div>
-              </div>
+              </div>*/}
               <div className="flex items-center space-x-3">
                 <Award className="w-6 h-6 text-cyan-400" />
                 <div>
                   <p className="text-gray-400 text-sm">Premio</p>
-                  <p className="text-white font-semibold">{tournament.premio}</p>
+                  <p className="text-white font-semibold">{tournamentData.prize}</p>
                 </div>
               </div>
             </div>
@@ -261,10 +247,10 @@ const TournamentDetailPage = () => {
               {/* Bracket/Matches Section */}
               <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
                 <h3 className="text-2xl font-bold text-white mb-6">
-                  {tournament.estado === 'Finalizado' ? 'Resultados del Torneo' : 'Enfrentamientos'}
+                  {tournamentData.estado === 'Finalizado' ? 'Resultados del Torneo' : 'Enfrentamientos'}
                 </h3>
                 <div className="space-y-4">
-                  {tournament.enfrentamientos.map((match, index) => (
+                  {matchesData.map((match, index) => (
                     <div key={index} className="bg-gray-900 border border-gray-600 rounded-lg p-4">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center space-x-4 mb-2 sm:mb-0">
@@ -278,8 +264,8 @@ const TournamentDetailPage = () => {
                               {match.fecha} - {match.hora}
                             </div>
                           )}
-                          <div className={`font-semibold ${getMatchStatusColor(match.resultado)}`}>
-                            {match.resultado}
+                          <div className={`font-semibold ${getMatchStatusColor(match.result)}`}>
+                            {match.result}
                           </div>
                         </div>
                       </div>
@@ -289,7 +275,7 @@ const TournamentDetailPage = () => {
               </div>
 
               {/* Rules Section */}
-              {tournament.reglas && (
+              {/*tournament.reglas && (
                 <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
                   <h3 className="text-2xl font-bold text-white mb-6">Reglas del Torneo</h3>
                   <ul className="space-y-3">
@@ -301,13 +287,13 @@ const TournamentDetailPage = () => {
                     ))}
                   </ul>
                 </div>
-              )}
+              )*/}
             </div>
 
             {/* Right Column - Actions and Info */}
             <div className="space-y-6">
               {/* Registration Button */}
-              {tournament.estado === 'Próximamente' && (
+              {tournamentData.estado === 'Próximamente' && (
                 <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-lg p-6">
                   <h4 className="text-xl font-bold text-white mb-4">¡Inscríbete Ahora!</h4>
                   <p className="text-gray-300 mb-6">
@@ -329,7 +315,7 @@ const TournamentDetailPage = () => {
                   Conecta con otros participantes y mantente al día con las novedades del torneo.
                 </p>
                 <a 
-                  href={tournament.discord}
+                  href={discord}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white py-3 rounded-lg font-semibold transition-colors duration-300 flex items-center justify-center space-x-2"
@@ -345,15 +331,15 @@ const TournamentDetailPage = () => {
                 <div className="space-y-3">
                   <div>
                     <p className="text-gray-400 text-sm">Organizador</p>
-                    <p className="text-white font-semibold">{tournament.organizador}</p>
+                    <p className="text-white font-semibold">{organizador}</p>
                   </div>
-                  <div>
+                  {/*<div>
                     <p className="text-gray-400 text-sm">Formato</p>
                     <p className="text-white font-semibold">{tournament.modalidad}</p>
-                  </div>
+                  </div>*/}
                   <div>
                     <p className="text-gray-400 text-sm">Participantes</p>
-                    <p className="text-white font-semibold">{tournament.equiposParticipantes} equipos registrados</p>
+                    <p className="text-white font-semibold">{tournamentData.participants} equipos registrados</p>
                   </div>
                 </div>
               </div>

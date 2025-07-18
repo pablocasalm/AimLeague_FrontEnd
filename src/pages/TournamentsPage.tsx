@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Trophy, Calendar, Users, Award, Clock, MapPin, ArrowLeft, Filter, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { tournamentService } from '../../services/tournamentService';
 
 interface Tournament {
   id: string;
-  nombre: string;
-  fecha: string;
+  name: string;
+  description: string; 
+  startDate: string;
+  endDate: string; 
   estado: 'Activo' | 'Finalizado' | 'Próximamente';
-  descripcion: string;
-  equipos?: number;
-  premio?: string;
-  tipo?: string;
+  maxTeams: number;
+  price: string;
+  prize: string;
 }
 
 const TournamentsPage = () => {
@@ -18,7 +20,7 @@ const TournamentsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   // Mock data for tournaments
-  const tournaments: Tournament[] = [
+ /* const tournaments: Tournament[] = [
     {
       id: 'academy-cup-agosto',
       nombre: "Aim League Open #3",
@@ -99,7 +101,50 @@ const TournamentsPage = () => {
       premio: "$100 USD",
       tipo: "Liga Regular"
     }
-  ];
+  ];*/
+
+  useEffect(() => {
+    loadTournamentsData();
+  }, []);
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+
+  const loadTournamentsData = async () => {
+    setIsLoading(true);
+    try {
+      // suponemos que devuelve un array sin "estado"
+      const result = await tournamentService.getAllTournaments() as Omit<Tournament,'estado'>[];
+      // calculamos el estado y guardamos
+      const withEstado = setTournamentState(result);
+      setTournaments(withEstado);
+    } catch (error) {
+      console.error("Ha habido un error cargando los torneos", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const setTournamentState = (
+    list: Omit<Tournament,'estado'>[]
+  ): Tournament[] => {
+    const now = new Date();
+    return list.map(t => {
+      const start = new Date(t.startDate);
+      const end   = new Date(t.endDate);
+
+      let estado: Tournament['estado'];
+      if (now < start) {
+        estado = 'Próximamente';
+      } else if (now >= start && now <= end) {
+        estado = 'Activo';
+      } else {
+        estado = 'Finalizado';
+      }
+
+      return { ...t, estado };
+    });
+  };
 
   const getStatusColor = (estado: Tournament['estado']) => {
     switch (estado) {
@@ -127,10 +172,28 @@ const TournamentsPage = () => {
     }
   };
 
+  const formatDate = (dateString: string) => {
+  const dateObj = new Date(dateString);
+
+  const dayName = dateObj.toLocaleDateString('es-ES', { weekday: 'long' });
+  const day = dateObj.getDate();
+  const monthName = dateObj.toLocaleDateString('es-ES', { month: 'long' });
+  const time = dateObj.toLocaleTimeString('es-ES', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  return {
+
+    date: `${day} de ${monthName}`,
+
+  };
+};
+
   const filteredTournaments = tournaments.filter(tournament => {
     const matchesFilter = activeFilter === 'Todos' || tournament.estado === activeFilter;
-    const matchesSearch = tournament.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         tournament.descripcion.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = tournament.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         tournament.description.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
@@ -205,7 +268,7 @@ const TournamentsPage = () => {
                 {/* Tournament Header */}
                 <div className="flex items-start justify-between mb-4">
                   <h3 className="text-xl font-bold text-white line-clamp-2">
-                    {tournament.nombre}
+                    {tournament.name}
                   </h3>
                   <span className={`px-3 py-1 rounded-full text-sm font-medium border flex items-center space-x-1 ${getStatusColor(tournament.estado)}`}>
                     {getStatusIcon(tournament.estado)}
@@ -217,34 +280,34 @@ const TournamentsPage = () => {
                 <div className="space-y-3 mb-6">
                   <div className="flex items-center text-gray-300">
                     <Calendar className="w-4 h-4 mr-2 text-cyan-400" />
-                    <span className="text-sm">{tournament.fecha}</span>
+                    <span className="text-sm">{formatDate(tournament.startDate).date}</span>
                   </div>
                   
-                  {tournament.equipos && (
+                  {tournament.maxTeams && (
                     <div className="flex items-center text-gray-300">
                       <Users className="w-4 h-4 mr-2 text-cyan-400" />
-                      <span className="text-sm">{tournament.equipos} equipos</span>
+                      <span className="text-sm">{tournament.maxTeams} equipos</span>
                     </div>
                   )}
                   
-                  {tournament.premio && (
+                  {tournament.prize && (
                     <div className="flex items-center text-gray-300">
                       <Award className="w-4 h-4 mr-2 text-cyan-400" />
-                      <span className="text-sm">{tournament.premio}</span>
+                      <span className="text-sm">{tournament.prize} €</span>
                     </div>
                   )}
                   
-                  {tournament.tipo && (
+                  {/*tournament.tipo && (
                     <div className="flex items-center text-gray-300">
                       <MapPin className="w-4 h-4 mr-2 text-cyan-400" />
                       <span className="text-sm">{tournament.tipo}</span>
                     </div>
-                  )}
+                  )*/}
                 </div>
 
                 {/* Description */}
                 <p className="text-gray-400 text-sm mb-6 leading-relaxed">
-                  {tournament.descripcion}
+                  {tournament.description}
                 </p>
 
                 {/* Action Button */}

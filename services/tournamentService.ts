@@ -11,9 +11,8 @@ export const tournamentService = {
         method: 'GET',
     }),
 
-    getTournamentById: (tournamentid: any) => apiClient('/Tournament/GetTournamentById', {
+    getTournamentById: (tournamentid: any) => apiClient(`/Tournament/GetTournamentById?tournamentid=${tournamentid}`, {
         method: 'GET',
-        body: JSON.stringify(tournamentid),
     }),
 
     getNextTournaments: () => apiClient('/Tournament/GetNextTournaments', {

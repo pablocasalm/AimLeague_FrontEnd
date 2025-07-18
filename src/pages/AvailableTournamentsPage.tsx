@@ -10,24 +10,26 @@ import {
   ArrowLeft, 
   AlertCircle,
   CheckCircle,
+  DollarSign,
   Crown,
   GraduationCap,
   Shield,
   ChevronDown
 } from 'lucide-react';
 import DashboardHeader from '../components/DashboardHeader';
+import { tournamentService } from '../../services/tournamentService';
 
 interface Tournament {
   id: string;
-  nombre: string;
-  fecha: string;
-  fechaLimite: string;
-  descripcion: string;
-  equipos: number;
-  maxEquipos: number;
-  premio: string;
-  tipo: string;
+  name: string;
+  description: string; 
+  startDate: string;
+  endDate: string; 
   estado: 'Inscripciones Abiertas' | 'Próximamente' | 'Cerrado';
+  maxTeams: number;
+  participants: number;
+  price: string;
+  prize: string;
 }
 
 const AvailableTournamentsPage = () => {
@@ -42,71 +44,49 @@ const AvailableTournamentsPage = () => {
     if (!isLoggedIn) {
       navigate('/login');
     }
+
+    loadTournamentsData();
   }, [navigate]);
 
-  // Mock tournaments data
-  const tournaments: Tournament[] = [
-    {
-      id: 'torneo-agosto-2025',
-      nombre: 'Torneo Agosto 2025',
-      fecha: '15 de agosto de 2025',
-      fechaLimite: '10 de agosto de 2025',
-      descripcion: 'Competencia mensual abierta para equipos amateur. Formato eliminación directa con premios en efectivo.',
-      equipos: 18,
-      maxEquipos: 32,
-      premio: '$600 USD',
-      tipo: 'Eliminación Directa',
-      estado: 'Inscripciones Abiertas'
-    },
-    {
-      id: 'liga-septiembre-2025',
-      nombre: 'Liga Septiembre 2025',
-      fecha: '1 - 30 de septiembre de 2025',
-      fechaLimite: '25 de agosto de 2025',
-      descripcion: 'Liga mensual con sistema de puntos. Los mejores equipos clasifican a playoffs.',
-      equipos: 12,
-      maxEquipos: 24,
-      premio: '$800 USD',
-      tipo: 'Liga Regular',
-      estado: 'Inscripciones Abiertas'
-    },
-    {
-      id: 'copa-otono-2025',
-      nombre: 'Copa de Otoño 2025',
-      fecha: '15 de octubre de 2025',
-      fechaLimite: '10 de octubre de 2025',
-      descripcion: 'El torneo más grande del año con equipos de toda Latinoamérica.',
-      equipos: 8,
-      maxEquipos: 64,
-      premio: '$1500 USD',
-      tipo: 'Doble Eliminación',
-      estado: 'Próximamente'
-    },
-    {
-      id: 'torneo-relampago-agosto',
-      nombre: 'Torneo Relámpago Agosto',
-      fecha: '20 de agosto de 2025',
-      fechaLimite: '18 de agosto de 2025',
-      descripcion: 'Torneo de un día con partidas rápidas. Ideal para equipos nuevos.',
-      equipos: 14,
-      maxEquipos: 16,
-      premio: '$200 USD',
-      tipo: 'Eliminación Directa',
-      estado: 'Inscripciones Abiertas'
-    },
-    {
-      id: 'academy-championship',
-      nombre: 'Academy Championship',
-      fecha: '5 de septiembre de 2025',
-      fechaLimite: '1 de septiembre de 2025',
-      descripcion: 'Torneo exclusivo para equipos de la academia. Perfecto para demostrar el progreso.',
-      equipos: 6,
-      maxEquipos: 16,
-      premio: '$300 USD',
-      tipo: 'Swiss System',
-      estado: 'Inscripciones Abiertas'
-    }
-  ];
+  
+    const [isLoading, setIsLoading] = useState(false);
+    const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  
+    const loadTournamentsData = async () => {
+      setIsLoading(true);
+      try {
+        // suponemos que devuelve un array sin "estado"
+        const result = await tournamentService.getAllTournaments() as Omit<Tournament,'estado'>[];
+        // calculamos el estado y guardamos
+        const withEstado = setTournamentState(result);
+        setTournaments(withEstado);
+      } catch (error) {
+        console.error("Ha habido un error cargando los torneos", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+  
+    const setTournamentState = (
+      list: Omit<Tournament,'estado'>[]
+    ): Tournament[] => {
+      const now = new Date();
+      return list.map(t => {
+        const start = new Date(t.startDate);
+        const end   = new Date(t.endDate);
+
+        let estado: Tournament['estado'];
+        if (now < start) {
+          estado = 'Inscripciones Abiertas';
+        } else if (now >= start && now <= end) {
+          estado = 'Cerrado';
+        } else {
+          estado = 'Próximamente';
+        }
+
+        return { ...t, estado };
+      });
+    };
 
   // Get user's team and role information
   const getUserTeamInfo = () => {
@@ -160,7 +140,7 @@ const AvailableTournamentsPage = () => {
       };
     }
 
-    if (userRole === 'Coach') {
+    if (userRole === 'Entrenador') {
       return {
         canRegister: true,
         buttonText: 'Inscribir Equipo',
@@ -348,7 +328,7 @@ const AvailableTournamentsPage = () => {
                 {/* Tournament Header */}
                 <div className="flex items-start justify-between mb-4">
                   <h3 className="text-xl font-bold text-white line-clamp-2">
-                    {tournament.nombre}
+                    {tournament.name}
                   </h3>
                   <span className={`px-3 py-1 rounded-full text-sm font-medium border flex items-center space-x-1 ${getStatusColor(tournament.estado)}`}>
                     {getStatusIcon(tournament.estado)}
@@ -360,14 +340,14 @@ const AvailableTournamentsPage = () => {
                 <div className="space-y-3 mb-4">
                   <div className="flex items-center text-gray-300">
                     <Calendar className="w-4 h-4 mr-2 text-cyan-400" />
-                    <span className="text-sm">{tournament.fecha}</span>
+                    <span className="text-sm">{tournament.startDate}</span>
                   </div>
                   
                   <div className="flex items-center text-gray-300">
                     <Clock className="w-4 h-4 mr-2 text-cyan-400" />
                     <span className="text-sm">
-                      Límite de inscripción: {tournament.fechaLimite}
-                      {isDeadlineSoon(tournament.fechaLimite) && (
+                      Límite de inscripción: {tournament.startDate}
+                      {isDeadlineSoon(tournament.startDate) && (
                         <span className="ml-2 bg-orange-500/20 text-orange-400 px-2 py-1 rounded text-xs">
                           ¡Pronto!
                         </span>
@@ -377,35 +357,35 @@ const AvailableTournamentsPage = () => {
                   
                   <div className="flex items-center text-gray-300">
                     <Users className="w-4 h-4 mr-2 text-cyan-400" />
-                    <span className="text-sm">{tournament.equipos}/{tournament.maxEquipos} equipos</span>
+                    <span className="text-sm">{tournament.participants}/{tournament.maxTeams} equipos</span>
                   </div>
                   
                   <div className="flex items-center text-gray-300">
                     <Award className="w-4 h-4 mr-2 text-cyan-400" />
-                    <span className="text-sm">{tournament.premio}</span>
+                    <span className="text-sm">{tournament.prize} €</span>
                   </div>
                   
                   <div className="flex items-center text-gray-300">
-                    <MapPin className="w-4 h-4 mr-2 text-cyan-400" />
-                    <span className="text-sm">{tournament.tipo}</span>
+                    <DollarSign className="w-4 h-4 mr-2 text-cyan-400" />
+                    <span className="text-sm">{tournament.price} €</span>
                   </div>
                 </div>
 
                 {/* Description */}
                 <p className="text-gray-400 text-sm mb-6 leading-relaxed">
-                  {tournament.descripcion}
+                  {tournament.description}
                 </p>
 
                 {/* Progress Bar */}
                 <div className="mb-6">
                   <div className="flex justify-between text-sm text-gray-400 mb-2">
                     <span>Equipos inscritos</span>
-                    <span>{tournament.equipos}/{tournament.maxEquipos}</span>
+                    <span>{tournament.participants}/{tournament.maxTeams}</span>
                   </div>
                   <div className="w-full bg-gray-700 rounded-full h-2">
                     <div 
                       className="bg-cyan-500 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${(tournament.equipos / tournament.maxEquipos) * 100}%` }}
+                      style={{ width: `${(tournament.participants / tournament.maxTeams) * 100}%` }}
                     ></div>
                   </div>
                 </div>
